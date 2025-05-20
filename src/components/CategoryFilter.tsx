@@ -1,25 +1,23 @@
 
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { categories } from "@/utils/categories";
 
 type CategoryFilterProps = {
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
 };
 
-const categories = [
-  { id: "all", name: "All" },
-  { id: "nature", name: "Nature" },
-  { id: "abstract", name: "Abstract" },
-  { id: "minimalist", name: "Minimalist" },
-  { id: "typography", name: "Typography" },
-  { id: "movies", name: "Movies" },
-];
-
 const CategoryFilter = ({ selectedCategory, onSelectCategory }: CategoryFilterProps) => {
+  // Extract just the category IDs and names for the filter
+  const filterCategories = categories.map(cat => ({
+    id: cat.id,
+    name: cat.name
+  }));
+
   return (
     <div className="flex overflow-x-auto pb-2 scrollbar-none space-x-2">
-      {categories.map((category) => (
+      {filterCategories.map((category) => (
         <Button
           key={category.id}
           variant={selectedCategory === category.id ? "default" : "outline"}

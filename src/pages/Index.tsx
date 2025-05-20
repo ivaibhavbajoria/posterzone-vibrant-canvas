@@ -5,11 +5,13 @@ import { Search, ShoppingCart, Heart, Menu, X } from "lucide-react";
 import PosterGrid from "@/components/PosterGrid";
 import CategoryFilter from "@/components/CategoryFilter";
 import HeroSection from "@/components/HeroSection";
+import CategoryBlocks from "@/components/CategoryBlocks";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const { toast } = useToast();
@@ -38,18 +40,21 @@ const Index = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <a href="/" className="flex items-center">
+              <Link to="/" className="flex items-center">
                 <span className="text-2xl font-bold text-posterzone-charcoal">
                   Poster<span className="text-posterzone-orange">Zone</span>
                 </span>
-              </a>
+              </Link>
             </div>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="/" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
+              <Link to="/" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
                 Home
-              </a>
+              </Link>
+              <Link to="/collections" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
+                Collections
+              </Link>
               <a href="#posters" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
                 Posters
               </a>
@@ -101,13 +106,20 @@ const Index = () => {
           {isMenuOpen && (
             <div className="md:hidden py-4 animate-fade-in">
               <nav className="flex flex-col space-y-4">
-                <a 
-                  href="/" 
+                <Link 
+                  to="/" 
                   className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Home
-                </a>
+                </Link>
+                <Link
+                  to="/collections"
+                  className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Collections
+                </Link>
                 <a 
                   href="#posters" 
                   className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
@@ -138,6 +150,9 @@ const Index = () => {
       <main>
         {/* Hero Section */}
         <HeroSection />
+
+        {/* Category Blocks */}
+        <CategoryBlocks />
 
         {/* Main Content */}
         <section id="posters" className="container mx-auto px-4 py-12">
