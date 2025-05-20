@@ -2,10 +2,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, ShoppingCart, Heart, Menu, X } from "lucide-react";
-import PosterGrid from "@/components/PosterGrid";
 import CategoryFilter from "@/components/CategoryFilter";
 import HeroSection from "@/components/HeroSection";
 import CategoryBlocks from "@/components/CategoryBlocks";
+import TrendingSection from "@/components/TrendingSection";
+import BestSellersSection from "@/components/BestSellersSection";
+import CollagePacksSection from "@/components/CollagePacksSection";
+import SurpriseMe from "@/components/SurpriseMe";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +21,6 @@ const Index = () => {
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartItems, setCartItems] = useState<number>(0);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const addToCart = () => {
     setCartItems(cartItems + 1);
@@ -55,11 +57,11 @@ const Index = () => {
               <Link to="/collections" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
                 Collections
               </Link>
-              <a href="#posters" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
-                Posters
-              </a>
-              <a href="#about" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
-                About Us
+              <Link to="/custom-poster" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
+                Custom Poster
+              </Link>
+              <a href="#surprise-me" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
+                Surprise Me
               </a>
               <a href="#contact" className="text-posterzone-charcoal hover:text-posterzone-orange transition-colors">
                 Contact
@@ -120,19 +122,19 @@ const Index = () => {
                 >
                   Collections
                 </Link>
-                <a 
-                  href="#posters" 
+                <Link
+                  to="/custom-poster"
                   className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Posters
-                </a>
+                  Custom Poster
+                </Link>
                 <a 
-                  href="#about" 
+                  href="#surprise-me" 
                   className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  About Us
+                  Surprise Me
                 </a>
                 <a 
                   href="#contact" 
@@ -154,26 +156,23 @@ const Index = () => {
         {/* Category Blocks */}
         <CategoryBlocks />
 
-        {/* Main Content */}
-        <section id="posters" className="container mx-auto px-4 py-12">
-          <div className="flex flex-col space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <h2 className="text-3xl font-bold text-posterzone-charcoal mb-4 md:mb-0">
-                Browse Our Collection
-              </h2>
-              
-              {/* Category Filter */}
-              <CategoryFilter 
-                selectedCategory={selectedCategory} 
-                onSelectCategory={setSelectedCategory} 
-              />
+        {/* Trending Now Section */}
+        <TrendingSection onAddToCart={addToCart} />
+
+        {/* Best Sellers Section */}
+        <BestSellersSection onAddToCart={addToCart} />
+
+        {/* Collage Packs Section */}
+        <CollagePacksSection onAddToCart={addToCart} />
+
+        {/* Surprise Me Section */}
+        <section id="surprise-me" className="py-12 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-posterzone-charcoal mb-2">Surprise Me</h2>
+              <p className="text-gray-600">Discover posters tailored just for you</p>
             </div>
-            
-            {/* Poster Grid */}
-            <PosterGrid 
-              category={selectedCategory} 
-              onAddToCart={addToCart} 
-            />
+            <SurpriseMe onAddToCart={addToCart} />
           </div>
         </section>
       </main>
