@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Surprise } from "lucide-react";
+import { Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -147,7 +146,7 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
                 className="w-full mt-4 bg-posterzone-blue hover:bg-posterzone-blue/90"
                 disabled={isGenerating}
               >
-                <Surprise className="mr-2 h-4 w-4" />
+                <Gift className="mr-2 h-4 w-4" />
                 {isGenerating ? "Generating..." : "Surprise Me!"}
               </Button>
             </div>
@@ -192,7 +191,7 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
                 </div>
               ) : (
                 <div className="text-center p-8 bg-gray-50 rounded-lg w-full">
-                  <Surprise className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                  <Gift className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                   <h3 className="text-lg font-medium text-gray-700">Surprise Yourself!</h3>
                   <p className="text-gray-500">
                     Select a category and how many posters you'd like to see
