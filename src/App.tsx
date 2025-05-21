@@ -13,6 +13,9 @@ import CollagePacks from "./pages/CollagePacks";
 import SurpriseMePage from "./pages/SurpriseMePage";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
+import CartPage from "./pages/CartPage";
+import LikedPostersPage from "./pages/LikedPostersPage";
+import PosterDetailsPage from "./pages/PosterDetailsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 
@@ -36,6 +39,9 @@ const App = () => (
             <Route path="/surprise-me" element={<SurpriseMePage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/favorites" element={<LikedPostersPage />} />
+            <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Route>

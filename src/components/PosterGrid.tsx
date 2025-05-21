@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { Heart, ShoppingCart, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import PosterModal from "./PosterModal";
+import { Link, useNavigate } from "react-router-dom";
 
 type PosterGridProps = {
   category: string;
@@ -20,6 +20,7 @@ type PosterType = {
 };
 
 const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [posters, setPosters] = useState<PosterType[]>([
     {
@@ -100,10 +101,11 @@ const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
 
   // Open poster details modal
   const openPosterDetails = (poster: PosterType) => {
-    setSelectedPoster(poster);
+    // Navigate to the poster details page instead of opening the modal
+    navigate(`/poster/${poster.id}`);
   };
 
-  // Close poster details modal
+  // Close poster details modal (keep this for backward compatibility)
   const closePosterDetails = () => {
     setSelectedPoster(null);
   };
@@ -173,16 +175,6 @@ const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
         <div className="py-20 text-center">
           <p className="text-lg text-gray-500">No posters found in this category.</p>
         </div>
-      )}
-
-      {/* Poster details modal */}
-      {selectedPoster && (
-        <PosterModal 
-          poster={selectedPoster} 
-          onClose={closePosterDetails} 
-          onAddToCart={onAddToCart}
-          onToggleLike={() => toggleLike(selectedPoster.id)}
-        />
       )}
     </>
   );

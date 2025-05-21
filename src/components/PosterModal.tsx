@@ -2,6 +2,8 @@
 import { X, Heart, ShoppingCart } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 type PosterType = {
   id: number;
@@ -20,6 +22,15 @@ type PosterModalProps = {
 };
 
 const PosterModal = ({ poster, onClose, onAddToCart, onToggleLike }: PosterModalProps) => {
+  const navigate = useNavigate();
+  const [selectedSize, setSelectedSize] = useState<string>("12×16″");
+
+  // Handle view details click
+  const handleViewDetails = () => {
+    navigate(`/poster/${poster.id}`);
+    onClose();
+  };
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70">
       <motion.div 
@@ -73,7 +84,12 @@ const PosterModal = ({ poster, onClose, onAddToCart, onToggleLike }: PosterModal
                 {["8×10″", "12×16″", "18×24″"].map(size => (
                   <button 
                     key={size}
-                    className="border border-gray-300 rounded py-2 hover:border-posterzone-orange hover:bg-posterzone-lightgray transition-colors"
+                    className={`border rounded py-2 transition-colors ${
+                      selectedSize === size 
+                        ? "border-posterzone-orange bg-posterzone-orange/10 text-posterzone-orange" 
+                        : "border-gray-300 hover:border-posterzone-orange hover:bg-posterzone-lightgray"
+                    }`}
+                    onClick={() => setSelectedSize(size)}
                   >
                     {size}
                   </button>
@@ -81,7 +97,7 @@ const PosterModal = ({ poster, onClose, onAddToCart, onToggleLike }: PosterModal
               </div>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <Button 
                 className="flex-1 bg-posterzone-orange hover:bg-posterzone-orange/90"
                 onClick={onAddToCart}
@@ -89,17 +105,26 @@ const PosterModal = ({ poster, onClose, onAddToCart, onToggleLike }: PosterModal
                 <ShoppingCart className="mr-2" size={18} />
                 Add to Cart
               </Button>
-              <Button 
-                variant="outline" 
-                className="p-2"
-                onClick={onToggleLike}
-              >
-                <Heart 
-                  size={20} 
-                  fill={poster.liked ? "#FF5733" : "none"} 
-                  className={poster.liked ? "text-posterzone-orange" : ""}
-                />
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={handleViewDetails}
+                >
+                  View Details
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="p-2"
+                  onClick={onToggleLike}
+                >
+                  <Heart 
+                    size={20} 
+                    fill={poster.liked ? "#FF5733" : "none"} 
+                    className={poster.liked ? "text-posterzone-orange" : ""}
+                  />
+                </Button>
+              </div>
             </div>
           </div>
         </div>

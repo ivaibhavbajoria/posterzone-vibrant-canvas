@@ -3,8 +3,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const Trending = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [trendingPosters, setTrendingPosters] = useState([
     {
@@ -63,6 +65,10 @@ const Trending = () => {
       description: `${posterTitle} has been added to your cart.`,
     });
   };
+  
+  const viewPosterDetails = (id: number) => {
+    navigate(`/poster/${id}`);
+  };
 
   return (
     <div className="min-h-screen bg-posterzone-lightgray py-12">
@@ -91,7 +97,8 @@ const Trending = () => {
                   <img 
                     src={poster.image} 
                     alt={poster.title} 
-                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                    onClick={() => viewPosterDetails(poster.id)}
                   />
                   
                   {/* Quick action overlay */}
@@ -110,7 +117,10 @@ const Trending = () => {
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer">
+                  <h3 
+                    className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer"
+                    onClick={() => viewPosterDetails(poster.id)}
+                  >
                     {poster.title}
                   </h3>
                   <p className="text-posterzone-blue font-semibold">${poster.price.toFixed(2)}</p>

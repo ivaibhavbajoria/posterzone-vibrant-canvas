@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, ShoppingCart, Menu, X, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu,
@@ -22,8 +22,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 const Header = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<number>(0);
+  const [cartItems, setCartItems] = useState<number>(3);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -89,6 +90,11 @@ const Header = () => {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            {/* Favorites Link */}
+            <Link to="/favorites" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Favorites">
+              <Heart size={20} className="text-posterzone-charcoal" />
+            </Link>
+
             {/* Search Dialog */}
             <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
               <DialogTrigger asChild>
@@ -167,11 +173,11 @@ const Header = () => {
                         <span className="font-medium">${cartTotal.toFixed(2)}</span>
                       </div>
                       <div className="flex flex-col space-y-2">
-                        <Button className="bg-posterzone-orange hover:bg-posterzone-orange/90 w-full">
-                          Checkout
+                        <Button className="bg-posterzone-orange hover:bg-posterzone-orange/90 w-full" onClick={() => navigate('/cart')}>
+                          View Cart
                         </Button>
                         <Button variant="outline" className="w-full">
-                          View Cart
+                          Checkout
                         </Button>
                       </div>
                     </div>
@@ -249,6 +255,20 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact
+              </Link>
+              <Link
+                to="/favorites"
+                className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Favorites
+              </Link>
+              <Link
+                to="/cart"
+                className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Cart
               </Link>
             </nav>
           </div>
