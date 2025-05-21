@@ -13,6 +13,15 @@ const Index = () => {
   const { toast } = useToast();
   const { addToCart } = useCart();
 
+  const handleAddToCart = (poster) => {
+    addToCart(poster);
+    toast({
+      title: "Added to cart",
+      description: `${poster.title} has been added to your cart.`,
+      duration: 3000,
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <main>
@@ -23,13 +32,13 @@ const Index = () => {
         <CategoryBlocks />
 
         {/* Trending Now Section */}
-        <TrendingSection />
+        <TrendingSection onAddToCart={handleAddToCart} />
 
         {/* Best Sellers Section */}
-        <BestSellersSection />
+        <BestSellersSection onAddToCart={handleAddToCart} />
 
         {/* Collage Packs Section */}
-        <CollagePacksSection />
+        <CollagePacksSection onAddToCart={handleAddToCart} />
       </main>
     </div>
   );

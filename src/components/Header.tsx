@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, Heart } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, Heart, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu,
@@ -81,6 +80,11 @@ const Header = () => {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            {/* User Profile Link */}
+            <Link to="/profile" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Profile">
+              <User size={20} className="text-posterzone-charcoal" />
+            </Link>
+            
             {/* Favorites Link */}
             <Link to="/favorites" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Favorites">
               <Heart size={20} className="text-posterzone-charcoal" />
@@ -265,6 +269,13 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Cart
+              </Link>
+              <Link
+                to="/profile"
+                className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Profile
               </Link>
             </nav>
           </div>
