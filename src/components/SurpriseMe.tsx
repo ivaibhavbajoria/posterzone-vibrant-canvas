@@ -1,11 +1,21 @@
+
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Gift } from "lucide-react";
+import { Gift, HelpCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "@/components/ui/accordion";
 
 type SurpriseMeProps = {
   onAddToCart: () => void;
@@ -17,16 +27,59 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
   const [posterCount, setPosterCount] = useState("3");
   const [generatedPosters, setGeneratedPosters] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [orientation, setOrientation] = useState("no-preference");
+  const [budgetRange, setBudgetRange] = useState([20, 50]);
+  const [roomType, setRoomType] = useState("");
+  const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const [stylePreferences, setStylePreferences] = useState<string[]>([]);
 
   const categories = [
     { value: "movies", label: "Movies" },
+    { value: "music", label: "Music" },
     { value: "nature", label: "Nature" },
     { value: "abstract", label: "Abstract Art" },
     { value: "minimalist", label: "Minimalist" },
     { value: "vintage", label: "Vintage" },
-    { value: "music", label: "Music" },
     { value: "sports", label: "Sports" },
     { value: "travel", label: "Travel" },
+    { value: "gaming", label: "Gaming" },
+    { value: "anime", label: "Anime" },
+    { value: "quotes", label: "Quotes" },
+    { value: "celebs", label: "Celebrities" },
+  ];
+
+  const styleOptions = [
+    { id: "digital", label: "Digital Art" },
+    { id: "sketch", label: "Sketch" },
+    { id: "watercolor", label: "Watercolor" },
+    { id: "graffiti", label: "Graffiti" },
+    { id: "3d", label: "3D Render" },
+    { id: "minimalist", label: "Minimalist" },
+  ];
+
+  const roomOptions = [
+    { value: "bedroom", label: "Bedroom" },
+    { value: "office", label: "Office" },
+    { value: "livingroom", label: "Living Room" },
+    { value: "gamingroom", label: "Gaming Room" },
+    { value: "studio", label: "Studio" },
+    { value: "kidsroom", label: "Kids' Room" },
+  ];
+
+  const posterSizes = [
+    { value: "a4", label: "A4 (8.3\" × 11.7\")" },
+    { value: "a3", label: "A3 (11.7\" × 16.5\")" },
+    { value: "a2", label: "A2 (16.5\" × 23.4\")" },
+    { value: "12x18", label: "12\" × 18\"" },
+    { value: "16x20", label: "16\" × 20\"" },
+    { value: "24x36", label: "24\" × 36\"" },
+  ];
+
+  const colorOptions = [
+    { id: "bold", label: "Bold", color: "#FF4500" },
+    { id: "monochrome", label: "Monochrome", color: "#333333" },
+    { id: "pastels", label: "Pastels", color: "#FFB6C1" },
+    { id: "earthy", label: "Earthy", color: "#8B4513" },
   ];
 
   // Sample poster data for demonstration
@@ -52,6 +105,20 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
       { id: 14, title: "Digital Abstract", image: "https://images.unsplash.com/photo-1499781350541-7783f6c6a0c8", price: 32.99 },
       { id: 15, title: "Minimalist Lines", image: "https://images.unsplash.com/photo-1486718448742-163732cd1544", price: 26.99 },
     ],
+    // Add other categories as needed
+    music: [
+      { id: 16, title: "Vinyl Record", image: "https://images.unsplash.com/photo-1483412033650-1015ddeb83d1", price: 24.99 },
+      { id: 17, title: "Concert Experience", image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a", price: 29.99 },
+      { id: 18, title: "Musical Notes", image: "https://images.unsplash.com/photo-1507838153414-b4b713384a76", price: 27.99 },
+    ],
+  };
+
+  const toggleStylePreference = (style: string) => {
+    setStylePreferences(prev => 
+      prev.includes(style)
+        ? prev.filter(s => s !== style)
+        : [...prev, style]
+    );
   };
 
   const generateRandomPosters = () => {
@@ -71,8 +138,14 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
       let allPosters = samplePosters[category as keyof typeof samplePosters] || [];
       
       if (!allPosters.length) {
+        // Fallback to all posters if category has no items
         allPosters = Object.values(samplePosters).flat();
       }
+      
+      // Apply budget filter
+      allPosters = allPosters.filter(poster => 
+        poster.price >= budgetRange[0] && poster.price <= budgetRange[1]
+      );
       
       const shuffled = [...allPosters].sort(() => 0.5 - Math.random());
       const count = Math.min(parseInt(posterCount), shuffled.length);
@@ -97,112 +170,276 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
   };
 
   return (
-    <Card className="overflow-hidden shadow-md">
-      <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
-            <div className="flex flex-col gap-4">
-              <div className="space-y-2">
-                <label htmlFor="category" className="text-sm font-medium text-gray-700">
-                  What kind of posters do you like?
-                </label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="posterCount" className="text-sm font-medium text-gray-700">
-                  How many posters?
-                </label>
-                <div className="flex space-x-2">
-                  {["1", "3", "5"].map((count) => (
-                    <Button
-                      key={count}
-                      type="button"
-                      variant={posterCount === count ? "default" : "outline"}
-                      className={`flex-1 ${
-                        posterCount === count ? "bg-posterzone-orange" : ""
-                      }`}
-                      onClick={() => setPosterCount(count)}
-                    >
-                      {count}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              
-              <Button
-                onClick={generateRandomPosters}
-                className="w-full mt-4 bg-posterzone-blue hover:bg-posterzone-blue/90"
-                disabled={isGenerating}
-              >
-                <Gift className="mr-2 h-4 w-4" />
-                {isGenerating ? "Generating..." : "Surprise Me!"}
-              </Button>
-            </div>
+    <div className="space-y-8">
+      {/* How It Works Section */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <HelpCircle className="text-posterzone-blue h-6 w-6" />
+            <h2 className="text-xl font-semibold">How It Works</h2>
           </div>
-          
-          <div className="md:col-span-2">
-            <div className="h-full flex items-center justify-center">
-              {generatedPosters.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-                  {generatedPosters.map((poster, index) => (
-                    <motion.div
-                      key={poster.id}
-                      className="poster-card overflow-hidden"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                    >
-                      <div className="relative overflow-hidden group">
-                        <img 
-                          src={poster.image} 
-                          alt={poster.title} 
-                          className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        
-                        <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <button
-                            className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
-                            onClick={() => addPosterToCart(poster.title)}
-                          >
-                            Add to Cart
-                          </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                step: 1,
+                title: "Choose Your Preferences",
+                description: "Select your preferred themes, styles, and how many posters you'd like to see.",
+              },
+              {
+                step: 2,
+                title: "Generate Recommendations",
+                description: "Our algorithm will curate a personalized selection of posters tailored to your taste.",
+              },
+              {
+                step: 3,
+                title: "Add to Cart & Enjoy",
+                description: "Choose the posters you love, add them to your cart, and transform your space!",
+              },
+            ].map((item) => (
+              <div key={item.step} className="bg-gray-50 p-4 rounded-lg text-center">
+                <div className="bg-posterzone-orange text-white rounded-full h-8 w-8 flex items-center justify-center mx-auto mb-3">
+                  {item.step}
+                </div>
+                <h3 className="font-medium mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Surprise Me Feature */}
+      <Card className="overflow-hidden shadow-md">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <div className="flex flex-col gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="category" className="text-sm font-medium text-gray-700">
+                    What kind of posters do you like?
+                  </label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="posterCount" className="text-sm font-medium text-gray-700">
+                    How many posters?
+                  </label>
+                  <div className="flex space-x-2">
+                    {["1", "3", "5"].map((count) => (
+                      <Button
+                        key={count}
+                        type="button"
+                        variant={posterCount === count ? "default" : "outline"}
+                        className={`flex-1 ${
+                          posterCount === count ? "bg-posterzone-orange" : ""
+                        }`}
+                        onClick={() => setPosterCount(count)}
+                      >
+                        {count}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Poster Orientation
+                  </label>
+                  <RadioGroup value={orientation} onValueChange={setOrientation}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="portrait" id="portrait" />
+                      <label htmlFor="portrait" className="text-sm">Portrait</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="landscape" id="landscape" />
+                      <label htmlFor="landscape" className="text-sm">Landscape</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="square" id="square" />
+                      <label htmlFor="square" className="text-sm">Square</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no-preference" id="no-preference" />
+                      <label htmlFor="no-preference" className="text-sm">No Preference</label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="advanced-options">
+                    <AccordionTrigger>Advanced Options</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Style Preference</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {styleOptions.map((style) => (
+                              <div key={style.id} className="flex items-center space-x-2">
+                                <Checkbox 
+                                  id={`style-${style.id}`}
+                                  checked={stylePreferences.includes(style.id)}
+                                  onCheckedChange={() => toggleStylePreference(style.id)}
+                                />
+                                <label htmlFor={`style-${style.id}`} className="text-sm">
+                                  {style.label}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Room Type</label>
+                          <Select value={roomType} onValueChange={setRoomType}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select room type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roomOptions.map((room) => (
+                                <SelectItem key={room.value} value={room.value}>
+                                  {room.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            Budget Range: ${budgetRange[0]} - ${budgetRange[1]}
+                          </label>
+                          <Slider
+                            defaultValue={[20, 50]}
+                            max={100}
+                            min={10}
+                            step={5}
+                            value={budgetRange}
+                            onValueChange={setBudgetRange}
+                          />
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="allow-duplicates"
+                            checked={allowDuplicates}
+                            onCheckedChange={(checked) => setAllowDuplicates(!!checked)}
+                          />
+                          <label htmlFor="allow-duplicates" className="text-sm text-gray-700">
+                            Allow posters you've already purchased
+                          </label>
                         </div>
                       </div>
-                      <div className="p-2">
-                        <h3 className="text-sm font-medium mb-1 hover:text-posterzone-orange cursor-pointer truncate">
-                          {poster.title}
-                        </h3>
-                        <p className="text-posterzone-blue font-semibold text-sm">${poster.price.toFixed(2)}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center p-8 bg-gray-50 rounded-lg w-full">
-                  <Gift className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                  <h3 className="text-lg font-medium text-gray-700">Surprise Yourself!</h3>
-                  <p className="text-gray-500">
-                    Select a category and how many posters you'd like to see
-                  </p>
-                </div>
-              )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+                
+                <Button
+                  onClick={generateRandomPosters}
+                  className="w-full mt-4 bg-posterzone-blue hover:bg-posterzone-blue/90"
+                  disabled={isGenerating}
+                >
+                  <Gift className="mr-2 h-4 w-4" />
+                  {isGenerating ? "Generating..." : "Surprise Me!"}
+                </Button>
+              </div>
+            </div>
+            
+            <div className="md:col-span-2">
+              <div className="h-full flex items-center justify-center">
+                {generatedPosters.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                    {generatedPosters.map((poster, index) => (
+                      <motion.div
+                        key={poster.id}
+                        className="poster-card overflow-hidden"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                      >
+                        <div className="relative overflow-hidden group">
+                          <img 
+                            src={poster.image} 
+                            alt={poster.title} 
+                            className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          
+                          <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <button
+                              className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
+                              onClick={() => addPosterToCart(poster.title)}
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-2">
+                          <h3 className="text-sm font-medium mb-1 hover:text-posterzone-orange cursor-pointer truncate">
+                            {poster.title}
+                          </h3>
+                          <p className="text-posterzone-blue font-semibold text-sm">${poster.price.toFixed(2)}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-8 bg-gray-50 rounded-lg w-full">
+                    <Gift className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                    <h3 className="text-lg font-medium text-gray-700">Surprise Yourself!</h3>
+                    <p className="text-gray-500">
+                      Select a category and how many posters you'd like to see
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* FAQ Section */}
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>How does the Surprise Me feature work?</AccordionTrigger>
+              <AccordionContent>
+                Our Surprise Me feature uses your preferences to curate a personalized selection of posters. 
+                Simply select your interests, style preferences, and how many posters you'd like to see, 
+                and our algorithm will generate recommendations tailored just for you.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>Can I request specific themes or styles?</AccordionTrigger>
+              <AccordionContent>
+                Yes! You can select from various categories, styles, and themes to guide our recommendations. 
+                The more specific your preferences, the more tailored your surprise selection will be.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>What if I don't like the selections?</AccordionTrigger>
+              <AccordionContent>
+                If you're not satisfied with the recommendations, you can generate a new set of surprise posters 
+                by adjusting your preferences and clicking the "Surprise Me" button again. You're never obligated 
+                to purchase posters that don't resonate with you.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

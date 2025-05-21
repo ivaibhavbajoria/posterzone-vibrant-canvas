@@ -11,6 +11,8 @@ import Trending from "./pages/Trending";
 import BestSellers from "./pages/BestSellers";
 import CollagePacks from "./pages/CollagePacks";
 import SurpriseMePage from "./pages/SurpriseMePage";
+import ContactPage from "./pages/ContactPage";
+import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 
@@ -32,6 +34,8 @@ const App = () => (
             <Route path="/best-sellers" element={<BestSellers />} />
             <Route path="/collage-packs" element={<CollagePacks />} />
             <Route path="/surprise-me" element={<SurpriseMePage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/about" element={<AboutPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Route>
