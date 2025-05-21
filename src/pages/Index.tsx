@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import HeroSection from "@/components/HeroSection";
@@ -8,18 +7,11 @@ import TrendingSection from "@/components/TrendingSection";
 import BestSellersSection from "@/components/BestSellersSection";
 import CollagePacksSection from "@/components/CollagePacksSection";
 import { useToast } from "@/components/ui/use-toast";
+import { useCart } from "@/contexts/CartContext";
 
 const Index = () => {
   const { toast } = useToast();
-  const [cartItems, setCartItems] = useState<number>(0);
-
-  const addToCart = () => {
-    setCartItems(cartItems + 1);
-    toast({
-      title: "Added to cart!",
-      description: "Item has been added to your cart.",
-    });
-  };
+  const { addToCart } = useCart();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -31,13 +23,13 @@ const Index = () => {
         <CategoryBlocks />
 
         {/* Trending Now Section */}
-        <TrendingSection onAddToCart={addToCart} />
+        <TrendingSection />
 
         {/* Best Sellers Section */}
-        <BestSellersSection onAddToCart={addToCart} />
+        <BestSellersSection />
 
         {/* Collage Packs Section */}
-        <CollagePacksSection onAddToCart={addToCart} />
+        <CollagePacksSection />
       </main>
     </div>
   );

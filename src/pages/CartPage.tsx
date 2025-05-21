@@ -132,9 +132,11 @@ const CartPage = () => {
                       </div>
                     </div>
                   </div>
-                  <Button className="w-full bg-posterzone-orange hover:bg-posterzone-orange/90 mb-2">
-                    Proceed to Checkout
-                  </Button>
+                  <Link to="/checkout">
+                    <Button className="w-full bg-posterzone-orange hover:bg-posterzone-orange/90 mb-2">
+                      Proceed to Checkout
+                    </Button>
+                  </Link>
                   <Link to="/collections">
                     <Button variant="outline" className="w-full">
                       Continue Shopping

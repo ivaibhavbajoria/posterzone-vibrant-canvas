@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Gift, HelpCircle, Check } from "lucide-react";
+import { Gift, HelpCircle, Check, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Slider } from "@/components/ui/slider";
+import { useCart } from "@/contexts/CartContext";
 import { 
   Accordion,
   AccordionContent,
@@ -18,13 +19,15 @@ import {
 } from "@/components/ui/accordion";
 
 type SurpriseMeProps = {
-  onAddToCart: () => void;
+  onAddToCart?: () => void;
 };
 
 const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
   const { toast } = useToast();
+  const { addToCart } = useCart();
   const [category, setCategory] = useState("");
-  const [posterCount, setPosterCount] = useState("3");
+  const [posterCount, setPosterCount] = useState("5");
+  const [customPosterCount, setCustomPosterCount] = useState("5");
   const [generatedPosters, setGeneratedPosters] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [orientation, setOrientation] = useState("no-preference");
@@ -148,7 +151,7 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
       );
       
       const shuffled = [...allPosters].sort(() => 0.5 - Math.random());
-      const count = Math.min(parseInt(posterCount), shuffled.length);
+      const count = Math.min(parseInt(posterCount === "custom" ? customPosterCount : posterCount), shuffled.length);
       const selected = shuffled.slice(0, count);
       
       setGeneratedPosters(selected);
@@ -161,12 +164,53 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
     }, 1000);
   };
 
-  const addPosterToCart = (posterTitle: string) => {
-    onAddToCart();
+  const addAllToCart = () => {
+    if (!generatedPosters.length) {
+      toast({
+        title: "No posters to add",
+        description: "Generate some surprise posters first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    generatedPosters.forEach(poster => {
+      addToCart({
+        id: poster.id,
+        title: poster.title,
+        price: poster.price,
+        image: poster.image,
+        size: "Standard"
+      });
+    });
+
+    toast({
+      title: "Success!",
+      description: `Added ${generatedPosters.length} posters to your cart with your preferences.`,
+    });
+
+    if (onAddToCart) {
+      onAddToCart();
+    }
+  };
+
+  const addPosterToCart = (poster: any) => {
+    addToCart({
+      id: poster.id,
+      title: poster.title,
+      price: poster.price,
+      image: poster.image,
+      size: "Standard"
+    });
+
     toast({
       title: "Added to cart!",
-      description: `${posterTitle} has been added to your cart.`,
+      description: `${poster.title} has been added to your cart.`,
     });
+
+    if (onAddToCart) {
+      onAddToCart();
+    }
   };
 
   return (
@@ -234,10 +278,10 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
                 
                 <div className="space-y-2">
                   <label htmlFor="posterCount" className="text-sm font-medium text-gray-700">
-                    How many posters?
+                    How many posters? (5-50)
                   </label>
                   <div className="flex space-x-2">
-                    {["1", "3", "5"].map((count) => (
+                    {["5", "10", "25", "custom"].map((count) => (
                       <Button
                         key={count}
                         type="button"
@@ -247,10 +291,24 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
                         }`}
                         onClick={() => setPosterCount(count)}
                       >
-                        {count}
+                        {count === "custom" ? "Custom" : count}
                       </Button>
                     ))}
                   </div>
+                  
+                  {posterCount === "custom" && (
+                    <div className="mt-2">
+                      <Input
+                        type="number"
+                        min="5"
+                        max="50"
+                        value={customPosterCount}
+                        onChange={(e) => setCustomPosterCount(e.target.value)}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Choose between 5-50 posters</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -353,6 +411,16 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
                   <Gift className="mr-2 h-4 w-4" />
                   {isGenerating ? "Generating..." : "Surprise Me!"}
                 </Button>
+                
+                {generatedPosters.length > 0 && (
+                  <Button
+                    onClick={addAllToCart}
+                    className="w-full bg-posterzone-orange hover:bg-posterzone-orange/90"
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Add All To Cart
+                  </Button>
+                )}
               </div>
             </div>
             
@@ -378,7 +446,7 @@ const SurpriseMe = ({ onAddToCart }: SurpriseMeProps) => {
                           <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <button
                               className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
-                              onClick={() => addPosterToCart(poster.title)}
+                              onClick={() => addPosterToCart(poster)}
                             >
                               Add to Cart
                             </button>
