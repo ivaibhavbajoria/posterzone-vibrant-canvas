@@ -2,15 +2,14 @@
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/contexts/CartContext";
 
-type TrendingSectionProps = {
-  onAddToCart: () => void;
-};
-
-const TrendingSection = ({ onAddToCart }: TrendingSectionProps) => {
+const TrendingSection = () => {
   const { toast } = useToast();
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   const trendingPosters = [
     {
@@ -39,12 +38,22 @@ const TrendingSection = ({ onAddToCart }: TrendingSectionProps) => {
     }
   ];
 
-  const addToCart = (posterTitle: string) => {
-    onAddToCart();
+  const handleAddToCart = (poster: any) => {
+    addToCart({
+      id: poster.id,
+      title: poster.title,
+      price: poster.price,
+      image: poster.image
+    });
+    
     toast({
       title: "Added to cart!",
-      description: `${posterTitle} has been added to your cart.`,
+      description: `${poster.title} has been added to your cart.`,
     });
+  };
+
+  const viewPosterDetails = (id: number) => {
+    navigate(`/poster/${id}`);
   };
 
   return (
@@ -77,13 +86,14 @@ const TrendingSection = ({ onAddToCart }: TrendingSectionProps) => {
                     src={poster.image} 
                     alt={poster.title} 
                     className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
+                    onClick={() => viewPosterDetails(poster.id)}
                   />
                   
                   {/* Quick action overlay */}
                   <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
                       className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
-                      onClick={() => addToCart(poster.title)}
+                      onClick={() => handleAddToCart(poster)}
                     >
                       Add to Cart
                     </button>
@@ -95,7 +105,10 @@ const TrendingSection = ({ onAddToCart }: TrendingSectionProps) => {
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer">
+                  <h3 
+                    className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer"
+                    onClick={() => viewPosterDetails(poster.id)}
+                  >
                     {poster.title}
                   </h3>
                   <p className="text-posterzone-blue font-semibold">${poster.price.toFixed(2)}</p>

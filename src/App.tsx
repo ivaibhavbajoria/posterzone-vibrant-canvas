@@ -18,36 +18,39 @@ import LikedPostersPage from "./pages/LikedPostersPage";
 import PosterDetailsPage from "./pages/PosterDetailsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
+import { CartProvider } from "./contexts/CartContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/collections/:categoryId" element={<Collections />} />
-            <Route path="/custom-poster" element={<CustomPoster />} />
-            <Route path="/trending" element={<Trending />} />
-            <Route path="/best-sellers" element={<BestSellers />} />
-            <Route path="/collage-packs" element={<CollagePacks />} />
-            <Route path="/surprise-me" element={<SurpriseMePage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/favorites" element={<LikedPostersPage />} />
-            <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <CartProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/collections" element={<Collections />} />
+              <Route path="/collections/:categoryId" element={<Collections />} />
+              <Route path="/custom-poster" element={<CustomPoster />} />
+              <Route path="/trending" element={<Trending />} />
+              <Route path="/best-sellers" element={<BestSellers />} />
+              <Route path="/collage-packs" element={<CollagePacks />} />
+              <Route path="/surprise-me" element={<SurpriseMePage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/favorites" element={<LikedPostersPage />} />
+              <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </CartProvider>
   </QueryClientProvider>
 );
 

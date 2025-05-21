@@ -4,10 +4,12 @@ import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "@/contexts/CartContext";
 
 const Trending = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addToCart } = useCart();
   const [trendingPosters, setTrendingPosters] = useState([
     {
       id: 1,
@@ -59,10 +61,17 @@ const Trending = () => {
     },
   ]);
 
-  const addToCart = (posterTitle: string) => {
+  const handleAddToCart = (poster: any) => {
+    addToCart({
+      id: poster.id,
+      title: poster.title,
+      price: poster.price,
+      image: poster.image
+    });
+    
     toast({
       title: "Added to cart!",
-      description: `${posterTitle} has been added to your cart.`,
+      description: `${poster.title} has been added to your cart.`,
     });
   };
   
@@ -105,7 +114,7 @@ const Trending = () => {
                   <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
                       className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
-                      onClick={() => addToCart(poster.title)}
+                      onClick={() => handleAddToCart(poster)}
                     >
                       Add to Cart
                     </button>

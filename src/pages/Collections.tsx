@@ -37,7 +37,6 @@ const Collections = () => {
             />
             <PosterGrid 
               category={selectedCategory}
-              onAddToCart={() => {}} 
             />
           </div>
         )}

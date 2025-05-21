@@ -1,49 +1,17 @@
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, Trash2, X } from "lucide-react";
+import { ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
-
-type CartItem = {
-  id: number;
-  title: string;
-  price: number;
-  quantity: number;
-  image: string;
-  size?: string;
-};
+import { useCart } from "@/contexts/CartContext";
 
 const CartPage = () => {
-  const { toast } = useToast();
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { id: 1, title: "Mountain Sunset Poster", price: 24.99, quantity: 1, image: "https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5" },
-    { id: 2, title: "Abstract Art Poster", price: 29.99, quantity: 1, image: "https://images.unsplash.com/photo-1552083375-1447ce886485" },
-    { id: 3, title: "Vintage Movie Poster", price: 34.99, quantity: 1, image: "https://images.unsplash.com/photo-1536440136630-a8c3a9f3aee7" },
-  ]);
-
+  const { cartItems, removeFromCart, updateQuantity, getCartTotal } = useCart();
+  
   // Calculate cart subtotal
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = getCartTotal();
   const shipping = 4.99;
   const total = subtotal + shipping;
-
-  // Remove item from cart
-  const removeFromCart = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-    toast({
-      title: "Item removed",
-      description: "Item has been removed from your cart",
-    });
-  };
-
-  // Update item quantity
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    setCartItems(cartItems.map(item => 
-      item.id === id ? { ...item, quantity: newQuantity } : item
-    ));
-  };
 
   // Check if cart is empty
   const isCartEmpty = cartItems.length === 0;

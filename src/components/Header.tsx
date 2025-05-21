@@ -20,20 +20,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useCart } from '@/contexts/CartContext';
 
 const Header = () => {
   const navigate = useNavigate();
+  const { cartItems, getCartCount, getCartTotal, removeFromCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<number>(3);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
-  };
-
-  const addToCart = () => {
-    setCartItems(cartItems + 1);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -44,14 +41,8 @@ const Header = () => {
     setSearchQuery('');
   };
 
-  // Sample cart items for demonstration
-  const sampleCartItems = [
-    { id: 1, name: 'Mountain Sunset Poster', price: 24.99, quantity: 1, image: 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5' },
-    { id: 2, name: 'Abstract Art Poster', price: 29.99, quantity: 1, image: 'https://images.unsplash.com/photo-1552083375-1447ce886485' },
-    { id: 3, name: 'Vintage Movie Poster', price: 34.99, quantity: 1, image: 'https://images.unsplash.com/photo-1536440136630-a8c3a9f3aee7' },
-  ];
-
-  const cartTotal = sampleCartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  const cartCount = getCartCount();
+  const cartTotal = getCartTotal();
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
@@ -137,28 +128,28 @@ const Header = () => {
                   onClick={(e) => e.preventDefault()} // Prevent the default action to allow dropdown to open
                 >
                   <ShoppingCart size={20} className="text-posterzone-charcoal" />
-                  {cartItems > 0 && (
+                  {cartCount > 0 && (
                     <Badge 
                       className="absolute -top-1 -right-1 bg-posterzone-orange text-white text-xs"
                     >
-                      {cartItems}
+                      {cartCount}
                     </Badge>
                   )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Your Cart ({sampleCartItems.length})</DropdownMenuLabel>
+                <DropdownMenuLabel>Your Cart ({cartItems.length})</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 
-                {sampleCartItems.length > 0 ? (
+                {cartItems.length > 0 ? (
                   <>
-                    {sampleCartItems.map((item) => (
+                    {cartItems.slice(0, 3).map((item) => (
                       <DropdownMenuItem key={item.id} className="flex items-center p-2 focus:bg-gray-100">
                         <div className="h-12 w-12 mr-2 overflow-hidden rounded">
-                          <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                          <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{item.name}</p>
+                          <p className="text-sm font-medium">{item.title}</p>
                           <div className="flex justify-between mt-1">
                             <p className="text-xs text-gray-500">{item.quantity} × ${item.price.toFixed(2)}</p>
                             <p className="text-xs font-medium">${(item.quantity * item.price).toFixed(2)}</p>
@@ -166,6 +157,11 @@ const Header = () => {
                         </div>
                       </DropdownMenuItem>
                     ))}
+                    {cartItems.length > 3 && (
+                      <div className="px-3 py-2 text-xs text-gray-500 text-center">
+                        +{cartItems.length - 3} more items
+                      </div>
+                    )}
                     <DropdownMenuSeparator />
                     <div className="p-3">
                       <div className="flex justify-between mb-3">

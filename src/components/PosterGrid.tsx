@@ -1,13 +1,13 @@
+
 import { useState } from "react";
 import { Heart, ShoppingCart, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
-import PosterModal from "./PosterModal";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "@/contexts/CartContext";
 
 type PosterGridProps = {
   category: string;
-  onAddToCart: () => void;
 };
 
 type PosterType = {
@@ -19,9 +19,10 @@ type PosterType = {
   liked: boolean;
 };
 
-const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
+const PosterGrid = ({ category }: PosterGridProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addToCart } = useCart();
   const [posters, setPosters] = useState<PosterType[]>([
     {
       id: 1,
@@ -73,8 +74,6 @@ const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
     },
   ]);
 
-  const [selectedPoster, setSelectedPoster] = useState<PosterType | null>(null);
-
   // Filter posters by category
   const filteredPosters = category === "all" 
     ? posters 
@@ -99,15 +98,24 @@ const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
     }
   };
 
-  // Open poster details modal
-  const openPosterDetails = (poster: PosterType) => {
-    // Navigate to the poster details page instead of opening the modal
-    navigate(`/poster/${poster.id}`);
+  // Handle add to cart
+  const handleAddToCart = (poster: PosterType) => {
+    addToCart({
+      id: poster.id,
+      title: poster.title,
+      price: poster.price,
+      image: poster.image
+    });
+    
+    toast({
+      title: "Added to cart!",
+      description: `${poster.title} has been added to your cart.`,
+    });
   };
 
-  // Close poster details modal (keep this for backward compatibility)
-  const closePosterDetails = () => {
-    setSelectedPoster(null);
+  // Open poster details page
+  const openPosterDetails = (poster: PosterType) => {
+    navigate(`/poster/${poster.id}`);
   };
 
   return (
@@ -150,7 +158,7 @@ const PosterGrid = ({ category, onAddToCart }: PosterGridProps) => {
                   </button>
                   <button 
                     className="bg-white p-3 rounded-full hover:bg-posterzone-orange hover:text-white transition-colors"
-                    onClick={onAddToCart}
+                    onClick={() => handleAddToCart(poster)}
                   >
                     <ShoppingCart size={18} />
                   </button>

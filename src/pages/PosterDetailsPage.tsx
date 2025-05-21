@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Heart, ShoppingCart, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/contexts/CartContext";
 
 type PosterType = {
   id: number;
@@ -19,6 +19,7 @@ const PosterDetailsPage = () => {
   const { toast } = useToast();
   const { posterId } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   
   const [poster, setPoster] = useState<PosterType | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("12×16″");
@@ -86,11 +87,21 @@ const PosterDetailsPage = () => {
   };
 
   // Add to cart
-  const addToCart = () => {
-    toast({
-      title: "Added to cart!",
-      description: `${quantity} × ${poster?.title} (${selectedSize}) added to your cart.`,
-    });
+  const handleAddToCart = () => {
+    if (poster) {
+      addToCart({
+        id: poster.id,
+        title: poster.title,
+        price: poster.price,
+        image: poster.image,
+        size: selectedSize
+      }, quantity);
+      
+      toast({
+        title: "Added to cart!",
+        description: `${quantity} × ${poster?.title} (${selectedSize}) added to your cart.`,
+      });
+    }
   };
 
   // Update quantity
@@ -197,7 +208,7 @@ const PosterDetailsPage = () => {
               <div className="flex gap-2">
                 <Button 
                   className="flex-1 bg-posterzone-orange hover:bg-posterzone-orange/90"
-                  onClick={addToCart}
+                  onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2" size={18} />
                   Add to Cart
