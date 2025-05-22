@@ -41,15 +41,43 @@ import {
   Package, User, Settings, MoreVertical, Search, Filter, Calendar, Download, 
   Printer, Eye, CheckCircle, XCircle, Users, ShoppingBag, BarChart, Bell,
   FileText, Gift, Heart, Star, Tag, PieChart, TrendingUp, UserPlus, Truck,
-  Edit // Added the missing Edit import
+  Edit, Plus
 } from 'lucide-react';
+import { BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RePieChart, Pie, Cell } from 'recharts';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isUpdateOrderStatusOpen, setIsUpdateOrderStatusOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [storeSettings, setStoreSettings] = useState({
+    name: 'PosterZone',
+    email: 'contact@posterzone.com',
+    currency: 'usd'
+  });
+  const [newStatus, setNewStatus] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
+
+  // Analytics mock data
+  const salesData = [
+    { name: 'Jan', sales: 4000 },
+    { name: 'Feb', sales: 3000 },
+    { name: 'Mar', sales: 5000 },
+    { name: 'Apr', sales: 4500 },
+    { name: 'May', sales: 6000 },
+    { name: 'Jun', sales: 5500 },
+  ];
+
+  const categoryData = [
+    { name: 'Abstract', value: 35 },
+    { name: 'Nature', value: 25 },
+    { name: 'Urban', value: 20 },
+    { name: 'Vintage', value: 15 },
+    { name: 'Other', value: 5 },
+  ];
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   // Mock data for orders
   const mockOrders = [
@@ -227,10 +255,13 @@ const AdminPanel = () => {
   };
 
   // Handle order status update
-  const handleUpdateStatus = (order, newStatus) => {
-    console.log(`Updating order ${order.id} status to ${newStatus}`);
+  const handleUpdateStatus = () => {
+    console.log(`Updating order ${selectedOrder?.id} status to ${newStatus}`);
+    console.log(`Additional notes: ${orderNotes}`);
     // In a real app, this would update the database
     setIsUpdateOrderStatusOpen(false);
+    setNewStatus('');
+    setOrderNotes('');
     // Here we would refresh data
   };
 
@@ -238,6 +269,13 @@ const AdminPanel = () => {
   const handleToggleAdminStatus = (user) => {
     console.log(`Toggling admin status for user ${user.id}`);
     // In a real app, this would update the user's role in the database
+  };
+
+  const handleSettingsChange = (field, value) => {
+    setStoreSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -771,14 +809,242 @@ const AdminPanel = () => {
                 </motion.div>
               </TabsContent>
               
-              {/* Insights Tab */}
+              {/* Insights Tab - Enhanced with charts */}
               <TabsContent value="insights">
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                  <h2 className="text-xl font-semibold mb-4">Analytics & Insights</h2>
-                  <p className="text-gray-500">
-                    Analytics dashboard will be implemented here, showing sales metrics, user behavior, and product performance.
-                  </p>
-                </div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Sales Overview Card */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <TrendingUp className="mr-2 h-5 w-5 text-green-500" />
+                          Sales Overview
+                        </CardTitle>
+                        <CardDescription>Monthly sales performance</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                              data={salesData}
+                              margin={{
+                                top: 5,
+                                right: 30,
+                                left: 20,
+                                bottom: 5,
+                              }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="sales" stroke="#8884d8" activeDot={{ r: 8 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Product Category Distribution */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <PieChart className="mr-2 h-5 w-5 text-blue-500" />
+                          Product Category Distribution
+                        </CardTitle>
+                        <CardDescription>Sales by poster category</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RePieChart>
+                              <Pie
+                                data={categoryData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              >
+                                {categoryData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </RePieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Analytics Summary Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Total Orders</p>
+                            <h3 className="text-2xl font-bold">1,284</h3>
+                          </div>
+                          <div className="bg-blue-100 p-3 rounded-full">
+                            <ShoppingBag className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+12.5% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Total Revenue</p>
+                            <h3 className="text-2xl font-bold">$24,389</h3>
+                          </div>
+                          <div className="bg-green-100 p-3 rounded-full">
+                            <BarChart className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+8.2% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Total Customers</p>
+                            <h3 className="text-2xl font-bold">3,875</h3>
+                          </div>
+                          <div className="bg-purple-100 p-3 rounded-full">
+                            <Users className="h-6 w-6 text-purple-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+5.3% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Avg. Order Value</p>
+                            <h3 className="text-2xl font-bold">$42.50</h3>
+                          </div>
+                          <div className="bg-orange-100 p-3 rounded-full">
+                            <Star className="h-6 w-6 text-orange-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+2.1% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  {/* Best Selling Products */}
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <ShoppingBag className="mr-2 h-5 w-5 text-orange-500" />
+                        Best Selling Products
+                      </CardTitle>
+                      <CardDescription>Top performing posters by sales</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Price</TableHead>
+                            <TableHead>Sold</TableHead>
+                            <TableHead>Revenue</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="font-medium">Abstract Geometry Lines</TableCell>
+                            <TableCell>$34.99</TableCell>
+                            <TableCell>1,283</TableCell>
+                            <TableCell>$44,892.17</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Minimalist Nature</TableCell>
+                            <TableCell>$29.99</TableCell>
+                            <TableCell>956</TableCell>
+                            <TableCell>$28,670.44</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Vintage Cinema Poster</TableCell>
+                            <TableCell>$39.99</TableCell>
+                            <TableCell>892</TableCell>
+                            <TableCell>$35,671.08</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Urban Cityscape</TableCell>
+                            <TableCell>$32.99</TableCell>
+                            <TableCell>845</TableCell>
+                            <TableCell>$27,876.55</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Customer Engagement */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Heart className="mr-2 h-5 w-5 text-red-500" />
+                        Customer Engagement
+                      </CardTitle>
+                      <CardDescription>Wishlist and cart activity</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={[
+                              { name: 'Added to Cart', count: 1250 },
+                              { name: 'Added to Wishlist', count: 860 },
+                              { name: 'Purchased', count: 620 },
+                              { name: 'Returned', count: 45 }
+                            ]}
+                            margin={{
+                              top: 5,
+                              right: 30,
+                              left: 20,
+                              bottom: 5,
+                            }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="count" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </TabsContent>
               
               {/* Settings Tab */}
@@ -799,15 +1065,26 @@ const AdminPanel = () => {
                       <CardContent className="space-y-4">
                         <div>
                           <Label htmlFor="store-name">Store Name</Label>
-                          <Input id="store-name" value="PosterZone" />
+                          <Input 
+                            id="store-name" 
+                            value={storeSettings.name} 
+                            onChange={(e) => handleSettingsChange('name', e.target.value)}
+                          />
                         </div>
                         <div>
                           <Label htmlFor="store-email">Contact Email</Label>
-                          <Input id="store-email" value="contact@posterzone.com" />
+                          <Input 
+                            id="store-email" 
+                            value={storeSettings.email}
+                            onChange={(e) => handleSettingsChange('email', e.target.value)}
+                          />
                         </div>
                         <div>
                           <Label htmlFor="store-currency">Default Currency</Label>
-                          <Select defaultValue="usd">
+                          <Select 
+                            value={storeSettings.currency}
+                            onValueChange={(value) => handleSettingsChange('currency', value)}
+                          >
                             <SelectTrigger id="store-currency">
                               <SelectValue placeholder="Select currency" />
                             </SelectTrigger>
@@ -896,6 +1173,43 @@ const AdminPanel = () => {
                         </Button>
                       </CardFooter>
                     </Card>
+
+                    {/* Product Management Settings */}
+                    <Card className="md:col-span-2">
+                      <CardHeader>
+                        <CardTitle>Product Management</CardTitle>
+                        <CardDescription>
+                          Configure poster product management settings
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Low Stock Alerts</p>
+                            <p className="text-sm text-gray-500">Receive notifications when stock is low</p>
+                          </div>
+                          <Switch defaultChecked />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Automatic Restock Emails</p>
+                            <p className="text-sm text-gray-500">Notify customers when out-of-stock items are back</p>
+                          </div>
+                          <Switch defaultChecked />
+                        </div>
+                        <div className="mt-4">
+                          <Label htmlFor="low-stock-threshold">Low Stock Threshold</Label>
+                          <div className="flex items-center mt-1">
+                            <Input id="low-stock-threshold" type="number" defaultValue="5" className="w-24" />
+                            <span className="ml-2 text-sm text-gray-500">items remaining</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Alert when product stock falls below this number</p>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button>Save Product Settings</Button>
+                      </CardFooter>
+                    </Card>
                   </div>
                 </motion.div>
               </TabsContent>
@@ -916,7 +1230,7 @@ const AdminPanel = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="status">New Status</Label>
-              <Select>
+              <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger id="status">
                   <SelectValue placeholder="Select new status" />
                 </SelectTrigger>
@@ -931,14 +1245,19 @@ const AdminPanel = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (optional)</Label>
-              <Textarea id="notes" placeholder="Add notes about this status change" />
+              <Textarea 
+                id="notes" 
+                placeholder="Add notes about this status change" 
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsUpdateOrderStatusOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => handleUpdateStatus(selectedOrder, 'completed')}>
+            <Button onClick={handleUpdateStatus}>
               Update Status
             </Button>
           </DialogFooter>
