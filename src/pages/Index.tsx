@@ -32,13 +32,13 @@ const Index = () => {
         <CategoryBlocks />
 
         {/* Trending Now Section */}
-        <TrendingSection onAddToCart={handleAddToCart} />
+        <TrendingSection onAddToCart={(poster) => handleAddToCart(poster)} />
 
         {/* Best Sellers Section */}
-        <BestSellersSection onAddToCart={handleAddToCart} />
+        <BestSellersSection onAddToCart={(poster) => handleAddToCart(poster)} />
 
         {/* Collage Packs Section */}
-        <CollagePacksSection onAddToCart={handleAddToCart} />
+        <CollagePacksSection onAddToCart={(poster) => handleAddToCart(poster)} />
       </main>
     </div>
   );

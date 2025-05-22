@@ -40,7 +40,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { 
   Package, User, Settings, MoreVertical, Search, Filter, Calendar, Download, 
   Printer, Eye, CheckCircle, XCircle, Users, ShoppingBag, BarChart, Bell,
-  FileText, Gift, Heart, Star, Tag, PieChart, TrendingUp, UserPlus, Truck
+  FileText, Gift, Heart, Star, Tag, PieChart, TrendingUp, UserPlus, Truck,
+  Edit // Added the missing Edit import
 } from 'lucide-react';
 
 const AdminPanel = () => {
