@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 type BestSellersSectionProps = {
-  onAddToCart: () => void;
+  onAddToCart: (poster: any) => void;
 };
 
 const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
@@ -44,7 +44,12 @@ const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
   ];
 
   const addToCart = (posterTitle: string) => {
-    onAddToCart();
+    onAddToCart({
+      id: bestSellers.find(p => p.title === posterTitle)?.id,
+      title: posterTitle,
+      price: bestSellers.find(p => p.title === posterTitle)?.price,
+      image: bestSellers.find(p => p.title === posterTitle)?.image
+    });
     toast({
       title: "Added to cart!",
       description: `${posterTitle} has been added to your cart.`,

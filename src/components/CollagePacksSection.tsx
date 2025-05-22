@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 type CollagePacksSectionProps = {
-  onAddToCart: () => void;
+  onAddToCart: (poster: any) => void;
 };
 
 const CollagePacksSection = ({ onAddToCart }: CollagePacksSectionProps) => {
@@ -44,7 +44,12 @@ const CollagePacksSection = ({ onAddToCart }: CollagePacksSectionProps) => {
   ];
 
   const addToCart = (collageTitle: string) => {
-    onAddToCart();
+    onAddToCart({
+      id: collagePacks.find(p => p.title === collageTitle)?.id,
+      title: collageTitle,
+      price: collagePacks.find(p => p.title === collageTitle)?.price,
+      image: collagePacks.find(p => p.title === collageTitle)?.image
+    });
     toast({
       title: "Added to cart!",
       description: `${collageTitle} has been added to your cart.`,
