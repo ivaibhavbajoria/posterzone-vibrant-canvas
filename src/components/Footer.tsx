@@ -1,5 +1,6 @@
 
 import { Facebook, Instagram, Twitter } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -19,21 +20,27 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="#" 
+                href="https://facebook.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 aria-label="Facebook"
               >
                 <Facebook size={20} />
               </a>
               <a 
-                href="#" 
+                href="https://instagram.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram size={20} />
               </a>
               <a 
-                href="#" 
+                href="https://twitter.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 aria-label="Twitter"
               >
@@ -49,36 +56,36 @@ const Footer = () => {
             </h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="/" 
+                <Link 
+                  to="/" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   Home
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#posters" 
+                <Link 
+                  to="/collections" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   Shop All
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/trending" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   New Arrivals
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/best-sellers" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   Best Sellers
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -90,36 +97,36 @@ const Footer = () => {
             </h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/contact" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   Contact Us
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/about" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   FAQs
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/about" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   Shipping Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/about" 
                   className="text-gray-300 hover:text-posterzone-orange transition-colors"
                 >
                   Returns & Exchanges
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

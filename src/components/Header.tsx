@@ -176,7 +176,7 @@ const Header = () => {
                         <Button className="bg-posterzone-orange hover:bg-posterzone-orange/90 w-full" onClick={() => navigate('/cart')}>
                           View Cart
                         </Button>
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full" onClick={() => navigate('/checkout')}>
                           Checkout
                         </Button>
                       </div>

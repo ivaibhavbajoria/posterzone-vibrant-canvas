@@ -2,6 +2,7 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -23,14 +24,18 @@ const HeroSection = () => {
               From minimalist designs to vibrant artwork.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button 
-                className="bg-posterzone-orange hover:bg-posterzone-orange/90 text-white px-6 py-2"
-              >
-                Shop Now <ArrowRight size={16} className="ml-2" />
-              </Button>
-              <Button variant="outline">
-                View Collections
-              </Button>
+              <Link to="/collections">
+                <Button 
+                  className="bg-posterzone-orange hover:bg-posterzone-orange/90 text-white px-6 py-2"
+                >
+                  Shop Now <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </Link>
+              <Link to="/collections">
+                <Button variant="outline">
+                  View Collections
+                </Button>
+              </Link>
             </div>
           </motion.div>
 

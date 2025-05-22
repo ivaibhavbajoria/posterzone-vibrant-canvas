@@ -18,6 +18,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import LikedPostersPage from "./pages/LikedPostersPage";
 import PosterDetailsPage from "./pages/PosterDetailsPage";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { CartProvider } from "./contexts/CartContext";
@@ -51,6 +52,8 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Route>
+            {/* Admin panel route - not nested under Layout */}
+            <Route path="/posterzone/adminpannel" element={<AdminPanel />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

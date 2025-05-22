@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 
-const TrendingSection = () => {
+const TrendingSection = ({ onAddToCart }) => {
   const { toast } = useToast();
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -38,21 +38,25 @@ const TrendingSection = () => {
     }
   ];
 
-  const handleAddToCart = (poster: any) => {
-    addToCart({
-      id: poster.id,
-      title: poster.title,
-      price: poster.price,
-      image: poster.image
-    });
-    
-    toast({
-      title: "Added to cart!",
-      description: `${poster.title} has been added to your cart.`,
-    });
+  const handleAddToCart = (poster) => {
+    if (onAddToCart) {
+      onAddToCart(poster);
+    } else {
+      addToCart({
+        id: poster.id,
+        title: poster.title,
+        price: poster.price,
+        image: poster.image
+      });
+      
+      toast({
+        title: "Added to cart!",
+        description: `${poster.title} has been added to your cart.`,
+      });
+    }
   };
 
-  const viewPosterDetails = (id: number) => {
+  const viewPosterDetails = (id) => {
     navigate(`/poster/${id}`);
   };
 
