@@ -5,8 +5,16 @@ import { Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
+type Poster = {
+  id: number;
+  title: string;
+  image: string;
+  price: number;
+  sales?: number;
+};
+
 type BestSellersSectionProps = {
-  onAddToCart: (poster: any) => void;
+  onAddToCart: (poster: Poster) => void;
 };
 
 const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
@@ -44,16 +52,19 @@ const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
   ];
 
   const addToCart = (posterTitle: string) => {
-    onAddToCart({
-      id: bestSellers.find(p => p.title === posterTitle)?.id,
-      title: posterTitle,
-      price: bestSellers.find(p => p.title === posterTitle)?.price,
-      image: bestSellers.find(p => p.title === posterTitle)?.image
-    });
-    toast({
-      title: "Added to cart!",
-      description: `${posterTitle} has been added to your cart.`,
-    });
+    const poster = bestSellers.find(p => p.title === posterTitle);
+    if (poster) {
+      onAddToCart({
+        id: poster.id,
+        title: poster.title,
+        price: poster.price,
+        image: poster.image
+      });
+      toast({
+        title: "Added to cart!",
+        description: `${posterTitle} has been added to your cart.`,
+      });
+    }
   };
 
   return (

@@ -39,14 +39,18 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Package, User, Settings, MoreVertical, Search, Filter, Calendar, Download, 
-  Printer, Eye, CheckCircle, XCircle, Users, ShoppingBag, BarChart, Bell,
-  FileText, Gift, Heart, Star, Tag, PieChart, TrendingUp, UserPlus, Truck,
-  Edit, Plus
+  Printer, Eye, CheckCircle, XCircle, Users, ShoppingBag, BarChart as BarChartIcon, Bell,
+  FileText, Gift, Heart, Star, Tag, PieChart as PieChartIcon, TrendingUp, UserPlus, Truck,
+  Edit, Plus, Layers
 } from 'lucide-react';
-import { BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RePieChart, Pie, Cell } from 'recharts';
+
+// Import our charts component
+import { SalesBarChart, SalesLineChart, CategoryPieChart } from '@/components/DashboardCharts';
+import PosterManagement from '@/components/admin/PosterManagement';
+import OrderInvoice from '@/components/admin/OrderInvoice';
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isUpdateOrderStatusOpen, setIsUpdateOrderStatusOpen] = useState(false);
@@ -58,6 +62,7 @@ const AdminPanel = () => {
   });
   const [newStatus, setNewStatus] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
+  const [showInvoice, setShowInvoice] = useState(false);
 
   // Analytics mock data
   const salesData = [
@@ -220,6 +225,67 @@ const AdminPanel = () => {
     ]
   };
 
+  // Activity feed data
+  const activityFeed = [
+    {
+      id: 1,
+      type: 'order',
+      message: 'New order received',
+      details: 'Order #ORD-2023-007',
+      timestamp: '10 minutes ago'
+    },
+    {
+      id: 2,
+      type: 'user',
+      message: 'New user registered',
+      details: 'Sarah Connor',
+      timestamp: '45 minutes ago'
+    },
+    {
+      id: 3,
+      type: 'stock',
+      message: 'Low stock alert',
+      details: 'Mountain Ranges poster is running low',
+      timestamp: '2 hours ago'
+    },
+    {
+      id: 4,
+      type: 'comment',
+      message: 'New review posted',
+      details: '5-star review on Abstract Geometry Lines',
+      timestamp: '3 hours ago'
+    },
+    {
+      id: 5,
+      type: 'order',
+      message: 'Order shipped',
+      details: 'Order #ORD-2023-002 has been shipped',
+      timestamp: '5 hours ago'
+    }
+  ];
+
+  // Tasks data
+  const tasksList = [
+    {
+      id: 1,
+      task: 'Process pending orders',
+      count: 4,
+      priority: 'high'
+    },
+    {
+      id: 2,
+      task: 'Respond to customer inquiries',
+      count: 7,
+      priority: 'medium'
+    },
+    {
+      id: 3,
+      task: 'Update product inventory',
+      count: 1,
+      priority: 'low'
+    }
+  ];
+
   // Filter orders based on search term and status filter
   const filteredOrders = mockOrders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -291,12 +357,28 @@ const AdminPanel = () => {
           </div>
           <nav className="flex-1 px-4 py-4 space-y-2">
             <Button 
+              variant={activeTab === 'dashboard' ? 'default' : 'ghost'} 
+              className="w-full justify-start" 
+              onClick={() => setActiveTab('dashboard')}
+            >
+              <PieChartIcon className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+            <Button 
               variant={activeTab === 'orders' ? 'default' : 'ghost'} 
               className="w-full justify-start" 
               onClick={() => setActiveTab('orders')}
             >
               <Package className="mr-2 h-4 w-4" />
               Orders
+            </Button>
+            <Button 
+              variant={activeTab === 'posters' ? 'default' : 'ghost'} 
+              className="w-full justify-start" 
+              onClick={() => setActiveTab('posters')}
+            >
+              <Layers className="mr-2 h-4 w-4" />
+              Posters
             </Button>
             <Button 
               variant={activeTab === 'customers' ? 'default' : 'ghost'} 
@@ -319,7 +401,7 @@ const AdminPanel = () => {
               className="w-full justify-start" 
               onClick={() => setActiveTab('insights')}
             >
-              <PieChart className="mr-2 h-4 w-4" />
+              <BarChartIcon className="mr-2 h-4 w-4" />
               Insights
             </Button>
             <Button 
@@ -351,12 +433,320 @@ const AdminPanel = () => {
           <main className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-4 md:hidden">
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="orders">Orders</TabsTrigger>
+                <TabsTrigger value="posters">Posters</TabsTrigger>
                 <TabsTrigger value="customers">Customers</TabsTrigger>
                 <TabsTrigger value="promotions">Promotions</TabsTrigger>
                 <TabsTrigger value="insights">Insights</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
+              
+              {/* Dashboard Tab */}
+              <TabsContent value="dashboard">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Total Orders</p>
+                            <h3 className="text-2xl font-bold">1,284</h3>
+                          </div>
+                          <div className="bg-blue-100 p-3 rounded-full">
+                            <ShoppingBag className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+12.5% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Total Revenue</p>
+                            <h3 className="text-2xl font-bold">$24,389</h3>
+                          </div>
+                          <div className="bg-green-100 p-3 rounded-full">
+                            <BarChartIcon className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+8.2% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Total Customers</p>
+                            <h3 className="text-2xl font-bold">3,875</h3>
+                          </div>
+                          <div className="bg-purple-100 p-3 rounded-full">
+                            <Users className="h-6 w-6 text-purple-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+5.3% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Avg. Order Value</p>
+                            <h3 className="text-2xl font-bold">$42.50</h3>
+                          </div>
+                          <div className="bg-orange-100 p-3 rounded-full">
+                            <Star className="h-6 w-6 text-orange-600" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center text-sm text-green-500">
+                          <TrendingUp className="h-4 w-4 mr-1" />
+                          <span>+2.1% from last month</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Charts and Activity */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    {/* Sales Chart */}
+                    <Card className="md:col-span-2">
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <TrendingUp className="mr-2 h-5 w-5 text-green-500" />
+                          Sales Overview
+                        </CardTitle>
+                        <CardDescription>Monthly sales performance</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80">
+                          <SalesLineChart data={salesData} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Recent Activity */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <Bell className="mr-2 h-5 w-5 text-blue-500" />
+                          Recent Activity
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4 max-h-80 overflow-auto">
+                        {activityFeed.map(activity => (
+                          <div key={activity.id} className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-b-0">
+                            <div className={`p-1.5 rounded-full ${
+                              activity.type === 'order' ? 'bg-green-100 text-green-600' : 
+                              activity.type === 'user' ? 'bg-blue-100 text-blue-600' : 
+                              activity.type === 'stock' ? 'bg-yellow-100 text-yellow-600' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {activity.type === 'order' ? <Package className="h-4 w-4" /> :
+                               activity.type === 'user' ? <User className="h-4 w-4" /> :
+                               activity.type === 'stock' ? <Layers className="h-4 w-4" /> :
+                               <FileText className="h-4 w-4" />}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{activity.message}</p>
+                              <p className="text-xs text-gray-500">{activity.details}</p>
+                              <p className="text-xs text-gray-400 mt-1">{activity.timestamp}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Bottom Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Top selling products */}
+                    <Card className="md:col-span-2">
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <Star className="mr-2 h-5 w-5 text-yellow-500" />
+                          Top Selling Posters
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Poster</TableHead>
+                                <TableHead className="text-right">Price</TableHead>
+                                <TableHead className="text-right">Sold</TableHead>
+                                <TableHead className="text-right">Revenue</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center">
+                                    <div className="h-10 w-10 mr-2">
+                                      <img 
+                                        src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52a" 
+                                        alt="Abstract Geometry Lines"
+                                        className="h-full w-full object-cover rounded"
+                                      />
+                                    </div>
+                                    <span>Abstract Geometry Lines</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">$34.99</TableCell>
+                                <TableCell className="text-right">1,283</TableCell>
+                                <TableCell className="text-right">$44,892.17</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center">
+                                    <div className="h-10 w-10 mr-2">
+                                      <img 
+                                        src="https://images.unsplash.com/photo-1493382051629-7eb03ec93ea2" 
+                                        alt="Minimalist Nature"
+                                        className="h-full w-full object-cover rounded"
+                                      />
+                                    </div>
+                                    <span>Minimalist Nature</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">$29.99</TableCell>
+                                <TableCell className="text-right">956</TableCell>
+                                <TableCell className="text-right">$28,670.44</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center">
+                                    <div className="h-10 w-10 mr-2">
+                                      <img 
+                                        src="https://images.unsplash.com/photo-1536440136630-a8c3a9f3aee7" 
+                                        alt="Vintage Cinema Poster"
+                                        className="h-full w-full object-cover rounded"
+                                      />
+                                    </div>
+                                    <span>Vintage Cinema Poster</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">$39.99</TableCell>
+                                <TableCell className="text-right">892</TableCell>
+                                <TableCell className="text-right">$35,671.08</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Category Distribution */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <PieChartIcon className="mr-2 h-5 w-5 text-indigo-500" />
+                          Category Distribution
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-60">
+                          <CategoryPieChart data={categoryData} colors={COLORS} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Tasks and Notifications */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                          Pending Tasks
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {tasksList.map(task => (
+                            <div key={task.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                              <div className="flex items-center">
+                                <div className={`h-2 w-2 rounded-full mr-3 ${
+                                  task.priority === 'high' ? 'bg-red-500' : 
+                                  task.priority === 'medium' ? 'bg-yellow-500' : 
+                                  'bg-green-500'
+                                }`}></div>
+                                <span>{task.task}</span>
+                              </div>
+                              <Badge variant="outline">
+                                {task.count} {task.count === 1 ? 'item' : 'items'}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <Package className="mr-2 h-5 w-5 text-amber-500" />
+                          Low Stock Alert
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-red-50">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 mr-3">
+                                <img 
+                                  src="https://images.unsplash.com/photo-1519681393784-d120267933ba" 
+                                  alt="Mountain Ranges"
+                                  className="h-full w-full object-cover rounded"
+                                />
+                              </div>
+                              <div>
+                                <p className="font-medium">Mountain Ranges</p>
+                                <p className="text-xs text-gray-500">5 items remaining</p>
+                              </div>
+                            </div>
+                            <Button size="sm">Restock</Button>
+                          </div>
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 mr-3">
+                                <img 
+                                  src="https://images.unsplash.com/photo-1550745165-9bc0b252726f" 
+                                  alt="Retro Gaming"
+                                  className="h-full w-full object-cover rounded"
+                                />
+                              </div>
+                              <div>
+                                <p className="font-medium">Retro Gaming</p>
+                                <p className="text-xs text-red-500">Out of stock!</p>
+                              </div>
+                            </div>
+                            <Button size="sm">Restock</Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </motion.div>
+              </TabsContent>
               
               {/* Orders Tab */}
               <TabsContent value="orders">
@@ -365,122 +755,141 @@ const AdminPanel = () => {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-                      <h2 className="text-xl font-semibold">Order Management</h2>
-                      <div className="flex space-x-2">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            type="text"
-                            placeholder="Search orders..."
-                            className="pl-9 w-full md:w-64"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                          />
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                              <Filter className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setStatusFilter('processing')}>Processing</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setStatusFilter('shipped')}>Shipped</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setStatusFilter('in_transit')}>In Transit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setStatusFilter('completed')}>Completed</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setStatusFilter('cancelled')}>Cancelled</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
-                              Export <Download className="ml-2 h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Download className="mr-2 h-4 w-4" /> Export CSV
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Printer className="mr-2 h-4 w-4" /> Print Orders
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  {showInvoice ? (
+                    <>
+                      <div className="mb-4">
+                        <Button variant="outline" onClick={() => setShowInvoice(false)}>
+                          Back to Orders
+                        </Button>
                       </div>
-                    </div>
-                    
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableCaption>A list of recent orders.</TableCaption>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Order ID</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Items</TableHead>
-                            <TableHead>Total</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredOrders.length > 0 ? (
-                            filteredOrders.map((order) => (
-                              <TableRow key={order.id}>
-                                <TableCell className="font-medium">{order.id}</TableCell>
-                                <TableCell>
-                                  <div>
-                                    <p>{order.customer}</p>
-                                    <p className="text-sm text-gray-500">{order.email}</p>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{order.date}</TableCell>
-                                <TableCell>{order.items}</TableCell>
-                                <TableCell>${order.total.toFixed(2)}</TableCell>
-                                <TableCell>{getStatusBadge(order.status)}</TableCell>
-                                <TableCell>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem>
-                                        <Eye className="mr-2 h-4 w-4" /> View Details
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => {
-                                        setSelectedOrder(order);
-                                        setIsUpdateOrderStatusOpen(true);
-                                      }}>
-                                        <Truck className="mr-2 h-4 w-4" /> Update Status
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-red-600">
-                                        <XCircle className="mr-2 h-4 w-4" /> Cancel Order
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                      <OrderInvoice order={selectedOrder} />
+                    </>
+                  ) : (
+                    <div className="bg-white p-6 rounded-lg shadow-sm">
+                      <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
+                        <h2 className="text-xl font-semibold">Order Management</h2>
+                        <div className="flex space-x-2">
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                            <Input
+                              type="text"
+                              placeholder="Search orders..."
+                              className="pl-9 w-full md:w-64"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setStatusFilter('processing')}>Processing</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setStatusFilter('shipped')}>Shipped</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setStatusFilter('in_transit')}>In Transit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setStatusFilter('completed')}>Completed</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setStatusFilter('cancelled')}>Cancelled</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline">
+                                Export <Download className="ml-2 h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Download className="mr-2 h-4 w-4" /> Export CSV
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Printer className="mr-2 h-4 w-4" /> Print Orders
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableCaption>A list of recent orders.</TableCaption>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Order ID</TableHead>
+                              <TableHead>Customer</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Items</TableHead>
+                              <TableHead>Total</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredOrders.length > 0 ? (
+                              filteredOrders.map((order) => (
+                                <TableRow key={order.id}>
+                                  <TableCell className="font-medium">{order.id}</TableCell>
+                                  <TableCell>
+                                    <div>
+                                      <p>{order.customer}</p>
+                                      <p className="text-sm text-gray-500">{order.email}</p>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{order.date}</TableCell>
+                                  <TableCell>{order.items}</TableCell>
+                                  <TableCell>${order.total.toFixed(2)}</TableCell>
+                                  <TableCell>{getStatusBadge(order.status)}</TableCell>
+                                  <TableCell>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => {
+                                          setSelectedOrder(order);
+                                          setShowInvoice(true);
+                                        }}>
+                                          <FileText className="mr-2 h-4 w-4" /> View Invoice
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => {
+                                          setSelectedOrder(order);
+                                          setIsUpdateOrderStatusOpen(true);
+                                        }}>
+                                          <Truck className="mr-2 h-4 w-4" /> Update Status
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="text-red-600">
+                                          <XCircle className="mr-2 h-4 w-4" /> Cancel Order
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                                  No orders found matching your criteria
                                 </TableCell>
                               </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={7} className="text-center py-4 text-gray-500">
-                                No orders found matching your criteria
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </motion.div>
+              </TabsContent>
+
+              {/* Posters Tab */}
+              <TabsContent value="posters">
+                <PosterManagement />
               </TabsContent>
               
               {/* Customers Tab */}
@@ -828,23 +1237,7 @@ const AdminPanel = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
-                              data={salesData}
-                              margin={{
-                                top: 5,
-                                right: 30,
-                                left: 20,
-                                bottom: 5,
-                              }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="name" />
-                              <YAxis />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="sales" stroke="#8884d8" activeDot={{ r: 8 }} />
-                            </LineChart>
-                          </ResponsiveContainer>
+                          <SalesLineChart data={salesData} />
                         </div>
                       </CardContent>
                     </Card>
@@ -853,32 +1246,14 @@ const AdminPanel = () => {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center">
-                          <PieChart className="mr-2 h-5 w-5 text-blue-500" />
+                          <PieChartIcon className="mr-2 h-5 w-5 text-blue-500" />
                           Product Category Distribution
                         </CardTitle>
                         <CardDescription>Sales by poster category</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RePieChart>
-                              <Pie
-                                data={categoryData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                              >
-                                {categoryData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </RePieChart>
-                          </ResponsiveContainer>
+                          <CategoryPieChart data={categoryData} colors={COLORS} />
                         </div>
                       </CardContent>
                     </Card>
@@ -912,7 +1287,7 @@ const AdminPanel = () => {
                             <h3 className="text-2xl font-bold">$24,389</h3>
                           </div>
                           <div className="bg-green-100 p-3 rounded-full">
-                            <BarChart className="h-6 w-6 text-green-600" />
+                            <BarChartIcon className="h-6 w-6 text-green-600" />
                           </div>
                         </div>
                         <div className="mt-4 flex items-center text-sm text-green-500">
@@ -1019,28 +1394,12 @@ const AdminPanel = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={[
-                              { name: 'Added to Cart', count: 1250 },
-                              { name: 'Added to Wishlist', count: 860 },
-                              { name: 'Purchased', count: 620 },
-                              { name: 'Returned', count: 45 }
-                            ]}
-                            margin={{
-                              top: 5,
-                              right: 30,
-                              left: 20,
-                              bottom: 5,
-                            }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="count" fill="#8884d8" />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        <SalesBarChart data={[
+                          { name: 'Added to Cart', count: 1250 },
+                          { name: 'Added to Wishlist', count: 860 },
+                          { name: 'Purchased', count: 620 },
+                          { name: 'Returned', count: 45 }
+                        ]} />
                       </div>
                     </CardContent>
                   </Card>
