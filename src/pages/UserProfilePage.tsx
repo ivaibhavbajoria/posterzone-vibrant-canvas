@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -15,20 +14,21 @@ import {
   UserCheck, LogOut 
 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UserProfilePage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Mock authentication state
+  const { user, profile, signOut } = useAuth();
   
-  // Mock user data - in a real app, this would come from Auth0 or your auth provider
+  // Mock user data - in a real app, this would come from your auth provider
   const [userData, setUserData] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: profile?.full_name || "John Doe",
+    email: user?.email || "john.doe@example.com",
     phone: "+1 (555) 123-4567",
     address: "123 Main Street, New York, NY 10001",
-    avatar: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=250",
+    avatar: profile?.avatar_url || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=250",
   });
   
   // Mock order history with tracking information
@@ -97,13 +97,20 @@ const UserProfilePage = () => {
     });
   };
 
-  const handleLogout = () => {
-    // In a real app, this would call Auth0 logout
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Get status badge properties
@@ -138,6 +145,8 @@ const UserProfilePage = () => {
     return statusProps[status] || statusProps.processing;
   };
 
+  const isAuthenticated = !!user;
+
   return (
     <div className="min-h-screen bg-white py-12">
       <div className="container mx-auto px-4">
@@ -165,8 +174,10 @@ const UserProfilePage = () => {
                   </Alert>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full">
-                    <UserCheck className="mr-2 h-4 w-4" /> Sign In
+                  <Button className="w-full" asChild>
+                    <a href="/auth">
+                      <UserCheck className="mr-2 h-4 w-4" /> Sign In
+                    </a>
                   </Button>
                 </CardFooter>
               </Card>
@@ -209,47 +220,46 @@ const UserProfilePage = () => {
                 
                 <Card>
                   <CardContent className="p-0">
-                    <TabsList className="grid grid-cols-1 w-full rounded-none">
-                      <TabsTrigger 
-                        value="profile" 
-                        className={`justify-start px-4 py-3 ${activeTab === "profile" ? "bg-gray-100" : ""}`}
-                        onClick={() => setActiveTab("profile")}
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        Profile Information
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="orders" 
-                        className={`justify-start px-4 py-3 ${activeTab === "orders" ? "bg-gray-100" : ""}`}
-                        onClick={() => setActiveTab("orders")}
-                      >
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        Order History
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="addresses" 
-                        className={`justify-start px-4 py-3 ${activeTab === "addresses" ? "bg-gray-100" : ""}`}
-                        onClick={() => setActiveTab("addresses")}
-                      >
-                        <Package className="mr-2 h-4 w-4" />
-                        Saved Addresses
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="settings" 
-                        className={`justify-start px-4 py-3 ${activeTab === "settings" ? "bg-gray-100" : ""}`}
-                        onClick={() => setActiveTab("settings")}
-                      >
-                        <Settings className="mr-2 h-4 w-4" />
-                        Account Settings
-                      </TabsTrigger>
-                    </TabsList>
+                    {/* Wrap TabsList in Tabs component */}
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                      <TabsList className="grid grid-cols-1 w-full rounded-none">
+                        <TabsTrigger 
+                          value="profile" 
+                          className={`justify-start px-4 py-3 ${activeTab === "profile" ? "bg-gray-100" : ""}`}
+                        >
+                          <User className="mr-2 h-4 w-4" />
+                          Profile Information
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="orders" 
+                          className={`justify-start px-4 py-3 ${activeTab === "orders" ? "bg-gray-100" : ""}`}
+                        >
+                          <ShoppingCart className="mr-2 h-4 w-4" />
+                          Order History
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="addresses" 
+                          className={`justify-start px-4 py-3 ${activeTab === "addresses" ? "bg-gray-100" : ""}`}
+                        >
+                          <Package className="mr-2 h-4 w-4" />
+                          Saved Addresses
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="settings" 
+                          className={`justify-start px-4 py-3 ${activeTab === "settings" ? "bg-gray-100" : ""}`}
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Account Settings
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                   </CardContent>
                 </Card>
               </div>
               
               {/* Main Content */}
               <div className="md:w-2/3 lg:w-3/4">
-                <Tabs value={activeTab} className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsContent value="profile" className="mt-0">
                     <Card>
                       <CardHeader>
