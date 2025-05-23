@@ -1,9 +1,10 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { FileText, Printer } from 'lucide-react';
+import { FileText, Printer, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface OrderItem {
   id: string;
@@ -36,11 +37,13 @@ interface PDFInvoiceProps {
 
 const PDFInvoice: React.FC<PDFInvoiceProps> = ({ order }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
     
     try {
+      setIsGenerating(true);
       const canvas = await html2canvas(invoiceRef.current, {
         scale: 2,
         logging: false,
@@ -59,14 +62,35 @@ const PDFInvoice: React.FC<PDFInvoiceProps> = ({ order }) => {
       
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
       pdf.save(`order-invoice-${order.id}.pdf`);
+      toast.success("PDF generated successfully!");
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+      toast.error("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    const originalContents = document.body.innerHTML;
+    const printContents = invoiceRef.current?.innerHTML;
+    
+    if (printContents) {
+      document.body.innerHTML = `
+        <style>
+          @media print {
+            body { margin: 0; padding: 20mm; }
+          }
+        </style>
+        <div class="print-container">${printContents}</div>
+      `;
+      
+      setTimeout(() => {
+        window.print();
+        document.body.innerHTML = originalContents;
+        toast.success("Print job sent successfully!");
+      }, 100);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -100,9 +124,19 @@ const PDFInvoice: React.FC<PDFInvoiceProps> = ({ order }) => {
           variant="outline" 
           className="flex items-center gap-1"
           onClick={generatePDF}
+          disabled={isGenerating}
         >
-          <FileText className="w-4 h-4 mr-1" />
-          Save as PDF
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <FileText className="w-4 h-4 mr-1" />
+              Save as PDF
+            </>
+          )}
         </Button>
         <Button 
           variant="outline" 

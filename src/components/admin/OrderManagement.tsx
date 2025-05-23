@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,8 @@ import {
   Calendar, 
   Download,
   Loader2, 
-  Eye 
+  Eye, 
+  RefreshCw
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -49,13 +50,10 @@ const OrderManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch orders from Supabase
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -92,8 +90,8 @@ const OrderManagement = () => {
             ...order,
             items: orderItems.map(item => ({
               id: item.id,
-              title: item.poster.title,
-              image: item.poster.image_url,
+              title: item.poster?.title || "Unknown Product",
+              image: item.poster?.image_url,
               price: item.price,
               quantity: item.quantity
             }))
@@ -102,6 +100,7 @@ const OrderManagement = () => {
       );
       
       setOrders(ordersWithItems);
+      console.log("Orders loaded:", ordersWithItems.length);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
@@ -112,6 +111,20 @@ const OrderManagement = () => {
     } finally {
       setLoading(false);
     }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+    toast({
+      title: "Refreshed",
+      description: "Orders have been refreshed.",
+    });
   };
 
   const filteredOrders = orders.filter(order => {
@@ -185,6 +198,14 @@ const OrderManagement = () => {
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
           <h2 className="text-xl font-semibold">Order Management</h2>
           <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            </Button>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input

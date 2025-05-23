@@ -22,8 +22,16 @@ import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { CartProvider } from "./contexts/CartContext";
+import AuthPage from "./pages/AuthPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -35,6 +43,7 @@ const App = () => (
             <Routes>
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<AuthPage />} />
                 <Route path="/collections" element={<Collections />} />
                 <Route path="/collections/:categoryId" element={<Collections />} />
                 <Route path="/custom-poster" element={<CustomPoster />} />
