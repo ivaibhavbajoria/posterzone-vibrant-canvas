@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 type AuthContextType = {
   session: Session | null;
@@ -23,19 +23,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         
         // Defer Supabase calls with setTimeout to prevent infinite loops
-        if (session?.user) {
+        if (currentSession?.user) {
           setTimeout(() => {
-            fetchUserProfile(session.user.id);
+            fetchUserProfile(currentSession.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -45,12 +44,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
       
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
+      if (currentSession?.user) {
+        fetchUserProfile(currentSession.user.id);
       }
       setLoading(false);
     });
@@ -86,18 +85,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Login failed",
-          description: error.message,
-        });
+        toast.error(`Login failed: ${error.message}`);
         throw error;
       }
 
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
+      toast.success("Login successful! Welcome back!");
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;
@@ -117,18 +109,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Signup failed",
-          description: error.message,
-        });
+        toast.error(`Signup failed: ${error.message}`);
         throw error;
       }
 
-      toast({
-        title: "Signup successful",
-        description: "Welcome to PosterZone!",
-      });
+      toast.success("Signup successful! Welcome to PosterZone!");
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;
@@ -138,17 +123,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
+      toast.success("You have been successfully logged out.");
     } catch (error) {
       console.error('Error signing out:', error);
-      toast({
-        variant: "destructive",
-        title: "Logout failed",
-        description: "Failed to log out. Please try again.",
-      });
+      toast.error("Failed to log out. Please try again.");
     }
   };
 
