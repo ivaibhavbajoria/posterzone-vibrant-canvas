@@ -5,25 +5,29 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { FileText, Printer } from 'lucide-react';
 
+interface OrderItem {
+  id: string;
+  title: string;
+  price: number;
+  quantity: number;
+}
+
+interface ShippingAddress {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+}
+
 interface Order {
   id: string;
   created_at: string;
   total: number;
   status: string;
-  shipping_address?: {
-    name: string;
-    address: string;
-    city: string;
-    state: string;
-    postal_code: string;
-    country: string;
-  };
-  items: {
-    id: string;
-    title: string;
-    price: number;
-    quantity: number;
-  }[];
+  shipping_address?: ShippingAddress;
+  items: OrderItem[];
 }
 
 interface PDFInvoiceProps {
@@ -36,24 +40,33 @@ const PDFInvoice: React.FC<PDFInvoiceProps> = ({ order }) => {
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
     
-    const canvas = await html2canvas(invoiceRef.current, {
-      scale: 2,
-      logging: false,
-      useCORS: true
-    });
-    
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-    
-    const imgWidth = 210;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-    pdf.save(`order-invoice-${order.id}.pdf`);
+    try {
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        logging: false,
+        useCORS: true
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`order-invoice-${order.id}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const formatDate = (dateString: string) => {
@@ -82,7 +95,7 @@ const PDFInvoice: React.FC<PDFInvoiceProps> = ({ order }) => {
 
   return (
     <div>
-      <div className="flex justify-end gap-2 mb-4">
+      <div className="flex justify-end gap-2 mb-4 print:hidden">
         <Button 
           variant="outline" 
           className="flex items-center gap-1"
@@ -94,7 +107,7 @@ const PDFInvoice: React.FC<PDFInvoiceProps> = ({ order }) => {
         <Button 
           variant="outline" 
           className="flex items-center gap-1"
-          onClick={() => window.print()}
+          onClick={handlePrint}
         >
           <Printer className="w-4 h-4 mr-1" />
           Print

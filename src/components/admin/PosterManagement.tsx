@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,16 +25,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
 
 interface Poster {
   id: string;
   title: string;
   description: string;
-  image: string;
+  image_url: string;
   price: number;
-  category_id: string;
+  category: string;
   created_at: string;
+  updated_at?: string;
+  is_best_seller?: boolean;
+  is_trending?: boolean;
+  stock?: number;
 }
 
 interface Category {
@@ -47,9 +51,9 @@ const PosterManagement = () => {
   const [newPoster, setNewPoster] = useState({
     title: '',
     description: '',
-    image: '',
+    image_url: '',
     price: 0,
-    category_id: ''
+    category: ''
   });
   const [selectedPoster, setSelectedPoster] = useState<Poster | null>(null);
   const queryClient = useQueryClient();
@@ -68,23 +72,34 @@ const PosterManagement = () => {
     }
   });
 
-  // Fetch categories
+  // Create a dummy categories fetch since we're using the 'category' field directly
   const { isLoading: isLoadingCategories, error: errorCategories, data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*');
+      // Extract unique categories from posters
+      const { data: postersForCategories, error } = await supabase
+        .from('posters')
+        .select('category');
+        
       if (error) {
         throw new Error(error.message);
       }
-      return data;
+      
+      // Create unique categories array
+      const uniqueCategories = Array.from(
+        new Set(postersForCategories.map(poster => poster.category).filter(Boolean))
+      ).map(categoryName => ({
+        id: categoryName,
+        name: categoryName
+      }));
+      
+      return uniqueCategories as Category[];
     }
   });
 
   useEffect(() => {
     if (postersData) {
-      setPosters(postersData);
+      setPosters(postersData as Poster[]);
     }
     if (categoriesData) {
       setCategories(categoriesData);
@@ -92,11 +107,11 @@ const PosterManagement = () => {
   }, [postersData, categoriesData]);
 
   // Mutations for CRUD operations
-  const createPosterMutation = useMutation(
-    async (newPoster: Omit<Poster, 'id' | 'created_at'>) => {
+  const createPosterMutation = useMutation({
+    mutationFn: async (newPosterData: Omit<typeof newPoster, 'id'>) => {
       const { data, error } = await supabase
         .from('posters')
-        .insert([newPoster])
+        .insert([newPosterData])
         .select()
         .single();
       if (error) {
@@ -104,20 +119,18 @@ const PosterManagement = () => {
       }
       return data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['posters'] });
-        toast.success('Poster created successfully!');
-        setNewPoster({ title: '', description: '', image: '', price: 0, category_id: '' }); // Reset form
-      },
-      onError: (error: any) => {
-        toast.error(`Failed to create poster: ${error.message}`);
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posters'] });
+      toast.success('Poster created successfully!');
+      setNewPoster({ title: '', description: '', image_url: '', price: 0, category: '' }); // Reset form
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to create poster: ${error.message}`);
+    },
+  });
 
-  const updatePosterMutation = useMutation(
-    async (updatedPoster: Poster) => {
+  const updatePosterMutation = useMutation({
+    mutationFn: async (updatedPoster: Poster) => {
       const { data, error } = await supabase
         .from('posters')
         .update(updatedPoster)
@@ -129,20 +142,18 @@ const PosterManagement = () => {
       }
       return data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['posters'] });
-        toast.success('Poster updated successfully!');
-        setSelectedPoster(null); // Clear selected poster after update
-      },
-      onError: (error: any) => {
-        toast.error(`Failed to update poster: ${error.message}`);
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posters'] });
+      toast.success('Poster updated successfully!');
+      setSelectedPoster(null); // Clear selected poster after update
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update poster: ${error.message}`);
+    },
+  });
 
-  const deletePosterMutation = useMutation(
-    async (id: string) => {
+  const deletePosterMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from('posters')
         .delete()
@@ -152,25 +163,23 @@ const PosterManagement = () => {
       }
       return data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['posters'] });
-        toast.success('Poster deleted successfully!');
-      },
-      onError: (error: any) => {
-        toast.error(`Failed to delete poster: ${error.message}`);
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posters'] });
+      toast.success('Poster deleted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to delete poster: ${error.message}`);
+    },
+  });
 
   const handleCreatePoster = async () => {
-    if (!newPoster.title || !newPoster.description || !newPoster.image || !newPoster.price || !newPoster.category_id) {
+    if (!newPoster.title || !newPoster.description || !newPoster.image_url || !newPoster.price || !newPoster.category) {
       toast.error('Please fill in all fields.');
       return;
     }
 
     try {
-      await createPosterMutation.mutateAsync({
+      await createPosterMutation.mutate({
         ...newPoster,
         price: Number(newPoster.price),
       });
@@ -183,7 +192,7 @@ const PosterManagement = () => {
     if (!selectedPoster) return;
 
     try {
-      await updatePosterMutation.mutateAsync(selectedPoster);
+      await updatePosterMutation.mutate(selectedPoster);
     } catch (error: any) {
       toast.error(`Failed to update poster: ${error.message}`);
     }
@@ -191,7 +200,7 @@ const PosterManagement = () => {
 
   const handleDeletePoster = async (id: string) => {
     try {
-      await deletePosterMutation.mutateAsync(id);
+      await deletePosterMutation.mutate(id);
     } catch (error: any) {
       toast.error(`Failed to delete poster: ${error.message}`);
     }
@@ -202,7 +211,7 @@ const PosterManagement = () => {
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewPoster({ ...newPoster, image: reader.result as string });
+        setNewPoster({ ...newPoster, image_url: reader.result as string });
       };
       reader.readAsDataURL(file);
     }
@@ -243,8 +252,8 @@ const PosterManagement = () => {
             <select
               id="category"
               className="w-full p-2 border rounded"
-              value={newPoster.category_id}
-              onChange={(e) => setNewPoster({ ...newPoster, category_id: e.target.value })}
+              value={newPoster.category}
+              onChange={(e) => setNewPoster({ ...newPoster, category: e.target.value })}
             >
               <option value="">Select a category</option>
               {categories.map((category) => (
@@ -260,8 +269,8 @@ const PosterManagement = () => {
               accept="image/*"
               onChange={handleImageChange}
             />
-            {newPoster.image && (
-              <img src={newPoster.image} alt="Preview" className="mt-2 h-20 w-20 object-cover rounded" />
+            {newPoster.image_url && (
+              <img src={newPoster.image_url} alt="Preview" className="mt-2 h-20 w-20 object-cover rounded" />
             )}
           </div>
           <div className="md:col-span-2">
@@ -273,8 +282,8 @@ const PosterManagement = () => {
             />
           </div>
         </div>
-        <Button onClick={handleCreatePoster} disabled={createPosterMutation.isLoading} className="mt-4">
-          {createPosterMutation.isLoading ? 'Creating...' : 'Create Poster'}
+        <Button onClick={handleCreatePoster} className="mt-4">
+          {createPosterMutation.isPending ? 'Creating...' : 'Create Poster'}
         </Button>
       </div>
 
@@ -296,16 +305,16 @@ const PosterManagement = () => {
             </TableHeader>
             <TableBody>
               {posters.map((poster) => {
-                const category = categories.find(cat => cat.id === poster.category_id);
+                const category = categories.find(cat => cat.id === poster.category);
                 return (
                   <TableRow key={poster.id}>
                     <TableCell>
-                      <img src={poster.image} alt={poster.title} className="h-16 w-16 object-cover rounded" />
+                      <img src={poster.image_url} alt={poster.title} className="h-16 w-16 object-cover rounded" />
                     </TableCell>
                     <TableCell>{poster.title}</TableCell>
                     <TableCell>{poster.description}</TableCell>
                     <TableCell>${poster.price}</TableCell>
-                    <TableCell>{category ? category.name : 'N/A'}</TableCell>
+                    <TableCell>{category ? category.name : poster.category || 'N/A'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Dialog>
@@ -364,8 +373,8 @@ const PosterManagement = () => {
                                 <select
                                   id="category"
                                   className="col-span-3 w-full p-2 border rounded"
-                                  value={selectedPoster?.category_id || poster.category_id}
-                                  onChange={(e) => setSelectedPoster({ ...poster, category_id: e.target.value })}
+                                  value={selectedPoster?.category || poster.category || ''}
+                                  onChange={(e) => setSelectedPoster({ ...poster, category: e.target.value })}
                                 >
                                   <option value="">Select a category</option>
                                   {categories.map((category) => (
@@ -386,25 +395,25 @@ const PosterManagement = () => {
                                       const file = e.target.files[0];
                                       const reader = new FileReader();
                                       reader.onloadend = () => {
-                                        setSelectedPoster({ ...poster, image: reader.result as string });
+                                        setSelectedPoster({ ...poster, image_url: reader.result as string });
                                       };
                                       reader.readAsDataURL(file);
                                     }
                                   }}
                                   className="col-span-3"
                                 />
-                                {selectedPoster?.image && (
-                                  <img src={selectedPoster.image} alt="Preview" className="mt-2 h-20 w-20 object-cover rounded" />
+                                {selectedPoster?.image_url && (
+                                  <img src={selectedPoster.image_url} alt="Preview" className="mt-2 h-20 w-20 object-cover rounded" />
                                 )}
                               </div>
                             </div>
-                            <Button onClick={handleUpdatePoster} disabled={updatePosterMutation.isLoading}>
-                              {updatePosterMutation.isLoading ? 'Updating...' : 'Update Poster'}
+                            <Button onClick={handleUpdatePoster}>
+                              {updatePosterMutation.isPending ? 'Updating...' : 'Update Poster'}
                             </Button>
                           </DialogContent>
                         </Dialog>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeletePoster(poster.id)} disabled={deletePosterMutation.isLoading}>
-                          {deletePosterMutation.isLoading ? 'Deleting...' : 'Delete'}
+                        <Button variant="destructive" size="sm" onClick={() => handleDeletePoster(poster.id)}>
+                          {deletePosterMutation.isPending ? 'Deleting...' : 'Delete'}
                         </Button>
                       </div>
                     </TableCell>

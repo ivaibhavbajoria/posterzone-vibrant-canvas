@@ -3,6 +3,7 @@ import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, BrowserRouter } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import Collections from "./pages/Collections";
 import CustomPoster from "./pages/CustomPoster";
@@ -26,36 +27,37 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <CartProvider>
-      <TooltipProvider>
-        <UIToaster />
-        <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/collections" element={<Collections />} />
-              <Route path="/collections/:categoryId" element={<Collections />} />
-              <Route path="/custom-poster" element={<CustomPoster />} />
-              <Route path="/trending" element={<Trending />} />
-              <Route path="/best-sellers" element={<BestSellers />} />
-              <Route path="/collage-packs" element={<CollagePacks />} />
-              <Route path="/surprise-me" element={<SurpriseMePage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/profile" element={<UserProfilePage />} />
-              <Route path="/favorites" element={<LikedPostersPage />} />
-              <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-            {/* Admin panel route - not nested under Layout */}
-            <Route path="/posterzone/adminpannel" element={<AdminPanel />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <TooltipProvider>
+          <UIToaster />
+          <BrowserRouter>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/collections" element={<Collections />} />
+                <Route path="/collections/:categoryId" element={<Collections />} />
+                <Route path="/custom-poster" element={<CustomPoster />} />
+                <Route path="/trending" element={<Trending />} />
+                <Route path="/best-sellers" element={<BestSellers />} />
+                <Route path="/collage-packs" element={<CollagePacks />} />
+                <Route path="/surprise-me" element={<SurpriseMePage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/profile" element={<UserProfilePage />} />
+                <Route path="/favorites" element={<LikedPostersPage />} />
+                <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
+                <Route path="/admin" element={<AdminPanel />} />
+                <Route path="/posterzone/adminpannel" element={<AdminPanel />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </CartProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
