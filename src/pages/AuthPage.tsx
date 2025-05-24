@@ -7,6 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import OTPVerification from "@/components/OTPVerification";
 
 const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -14,6 +15,8 @@ const AuthPage: React.FC = () => {
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [showOTP, setShowOTP] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
@@ -32,6 +35,9 @@ const AuthPage: React.FC = () => {
         await signIn(email, password);
       } else {
         await signUp(email, password, fullName);
+        // For signup, show OTP verification
+        setPendingEmail(email);
+        setShowOTP(true);
       }
     } catch (error) {
       console.error("Authentication error:", error);
@@ -39,6 +45,28 @@ const AuthPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const handleOTPVerification = () => {
+    setShowOTP(false);
+    navigate("/");
+  };
+
+  const handleResendOTP = async () => {
+    // Simulate resending OTP
+    console.log("Resending OTP to:", pendingEmail);
+  };
+
+  if (showOTP) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh] px-4">
+        <OTPVerification
+          email={pendingEmail}
+          onVerificationComplete={handleOTPVerification}
+          onResendOTP={handleResendOTP}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-[80vh] px-4">

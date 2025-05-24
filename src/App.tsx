@@ -18,6 +18,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import LikedPostersPage from "./pages/LikedPostersPage";
 import PosterDetailsPage from "./pages/PosterDetailsPage";
+import OrderHistoryPage from "./pages/OrderHistoryPage";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/profile" element={<UserProfilePage />} />
+                <Route path="/order-history" element={<OrderHistoryPage />} />
                 <Route path="/favorites" element={<LikedPostersPage />} />
                 <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
                 <Route path="/admin" element={<AdminPanel />} />

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     console.error(
@@ -39,10 +39,10 @@ const NotFound = () => {
             <ArrowLeft size={18} />
             Go Back
           </Button>
-          <Link to={user ? (user.isAdmin ? "/admin" : "/") : "/"}>
+          <Link to={user ? (profile?.is_admin ? "/admin" : "/") : "/"}>
             <Button className="flex items-center gap-2">
               <Home size={18} />
-              {user && user.isAdmin ? "Go to Admin" : "Return to Home"}
+              {user && profile?.is_admin ? "Go to Admin" : "Return to Home"}
             </Button>
           </Link>
         </div>
