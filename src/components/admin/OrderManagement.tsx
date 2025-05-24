@@ -23,7 +23,9 @@ import {
   Download,
   Loader2, 
   Eye, 
-  RefreshCw
+  RefreshCw,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -41,6 +43,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import PDFInvoice from './PDFInvoice';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/currency';
 
 const OrderManagement = () => {
   const { toast } = useToast();
@@ -51,6 +54,126 @@ const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
+
+  // Real-time subscription for orders
+  useEffect(() => {
+    const channel = supabase
+      .channel('orders-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('Real-time order update:', payload);
+          handleRealTimeUpdate(payload);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items'
+        },
+        (payload) => {
+          console.log('Real-time order items update:', payload);
+          // Refresh orders when order items change
+          fetchOrders();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+        setIsRealTimeConnected(status === 'SUBSCRIBED');
+        if (status === 'SUBSCRIBED') {
+          toast({
+            title: "Real-time Updates Enabled",
+            description: "Orders will update automatically.",
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleRealTimeUpdate = (payload) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    setOrders(currentOrders => {
+      switch (eventType) {
+        case 'INSERT':
+          // Add new order and fetch its details
+          fetchOrderDetails(newRecord.id).then(orderWithItems => {
+            if (orderWithItems) {
+              setOrders(prev => [orderWithItems, ...prev]);
+            }
+          });
+          return currentOrders;
+          
+        case 'UPDATE':
+          return currentOrders.map(order => 
+            order.id === newRecord.id 
+              ? { ...order, ...newRecord }
+              : order
+          );
+          
+        case 'DELETE':
+          return currentOrders.filter(order => order.id !== oldRecord.id);
+          
+        default:
+          return currentOrders;
+      }
+    });
+  };
+
+  const fetchOrderDetails = async (orderId) => {
+    try {
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name
+          )
+        `)
+        .eq('id', orderId)
+        .single();
+      
+      if (orderError) throw orderError;
+      
+      const { data: orderItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          poster:poster_id (
+            title,
+            image_url
+          )
+        `)
+        .eq('order_id', orderId);
+      
+      if (itemsError) throw itemsError;
+      
+      return {
+        ...orderData,
+        items: orderItems.map(item => ({
+          id: item.id,
+          title: item.poster?.title || "Unknown Product",
+          image: item.poster?.image_url,
+          price: item.price,
+          quantity: item.quantity
+        }))
+      };
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      return null;
+    }
+  };
 
   // Fetch orders from Supabase
   const fetchOrders = useCallback(async () => {
@@ -156,18 +279,13 @@ const OrderManagement = () => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', orderId);
       
       if (error) throw error;
-      
-      // Update the local state
-      setOrders(orders.map(order => {
-        if (order.id === orderId) {
-          return { ...order, status: newStatus };
-        }
-        return order;
-      }));
       
       toast({
         title: "Status Updated",
@@ -196,7 +314,19 @@ const OrderManagement = () => {
     >
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-          <h2 className="text-xl font-semibold">Order Management</h2>
+          <div className="flex items-center space-x-2">
+            <h2 className="text-xl font-semibold">Order Management</h2>
+            <div className="flex items-center space-x-1">
+              {isRealTimeConnected ? (
+                <Wifi className="h-4 w-4 text-green-500" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-red-500" />
+              )}
+              <span className="text-xs text-gray-500">
+                {isRealTimeConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
+          </div>
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
@@ -243,7 +373,7 @@ const OrderManagement = () => {
             </div>
           ) : (
             <Table>
-              <TableCaption>List of all orders</TableCaption>
+              <TableCaption>List of all orders - Real-time updates enabled</TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead>Order ID</TableHead>
@@ -268,7 +398,7 @@ const OrderManagement = () => {
                       </TableCell>
                       <TableCell>{order.profiles?.full_name || "Anonymous"}</TableCell>
                       <TableCell>{order.items?.length || 0} items</TableCell>
-                      <TableCell>${parseFloat(order.total).toFixed(2)}</TableCell>
+                      <TableCell>{formatCurrency(parseFloat(order.total))}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(order.status)}>
                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
