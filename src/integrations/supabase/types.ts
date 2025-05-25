@@ -9,6 +9,132 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bundles: {
+        Row: {
+          created_at: string
+          discount_percentage: number
+          id: string
+          is_active: boolean | null
+          min_quantity: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          discount_percentage: number
+          id?: string
+          is_active?: boolean | null
+          min_quantity: number
+          name: string
+        }
+        Update: {
+          created_at?: string
+          discount_percentage?: number
+          id?: string
+          is_active?: boolean | null
+          min_quantity?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      coupon_usage: {
+        Row: {
+          coupon_id: string | null
+          id: string
+          order_id: string | null
+          used_at: string
+          user_id: string | null
+        }
+        Insert: {
+          coupon_id?: string | null
+          id?: string
+          order_id?: string | null
+          used_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          coupon_id?: string | null
+          id?: string
+          order_id?: string | null
+          used_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usage_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          current_uses: number | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          min_order_amount: number | null
+          type: string
+          value: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_uses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_order_amount?: number | null
+          type: string
+          value: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_uses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_order_amount?: number | null
+          type?: string
+          value?: number
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           id: string
@@ -50,7 +176,10 @@ export type Database = {
       }
       orders: {
         Row: {
+          bundle_id: string | null
+          coupon_id: string | null
           created_at: string | null
+          discount_amount: number | null
           id: string
           payment_intent: string | null
           shipping_address: Json | null
@@ -60,7 +189,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bundle_id?: string | null
+          coupon_id?: string | null
           created_at?: string | null
+          discount_amount?: number | null
           id?: string
           payment_intent?: string | null
           shipping_address?: Json | null
@@ -70,7 +202,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bundle_id?: string | null
+          coupon_id?: string | null
           created_at?: string | null
+          discount_amount?: number | null
           id?: string
           payment_intent?: string | null
           shipping_address?: Json | null
@@ -79,7 +214,22 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posters: {
         Row: {
@@ -91,6 +241,7 @@ export type Database = {
           is_best_seller: boolean | null
           is_trending: boolean | null
           price: number
+          price_category: Database["public"]["Enums"]["price_category"] | null
           stock: number | null
           title: string
           updated_at: string | null
@@ -104,6 +255,7 @@ export type Database = {
           is_best_seller?: boolean | null
           is_trending?: boolean | null
           price: number
+          price_category?: Database["public"]["Enums"]["price_category"] | null
           stock?: number | null
           title: string
           updated_at?: string | null
@@ -117,6 +269,7 @@ export type Database = {
           is_best_seller?: boolean | null
           is_trending?: boolean | null
           price?: number
+          price_category?: Database["public"]["Enums"]["price_category"] | null
           stock?: number | null
           title?: string
           updated_at?: string | null
@@ -161,7 +314,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      price_category: "budget" | "standard" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -276,6 +429,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      price_category: ["budget", "standard", "premium"],
+    },
   },
 } as const
