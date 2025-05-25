@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Package, Download } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 
@@ -69,6 +69,27 @@ const OrderManagement = () => {
 
   useEffect(() => {
     fetchOrders();
+
+    // Set up real-time subscription for orders
+    const channel = supabase
+      .channel('orders_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('Order change detected:', payload);
+          fetchOrders(); // Refetch orders when changes occur
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -81,7 +102,7 @@ const OrderManagement = () => {
       if (error) throw error;
 
       toast.success('Order status updated successfully');
-      fetchOrders();
+      // No need to manually refetch as real-time will handle it
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error('Failed to update order status');
@@ -124,7 +145,7 @@ const OrderManagement = () => {
     <Card>
       <CardHeader>
         <CardTitle>Order Management</CardTitle>
-        <CardDescription>View and manage customer orders</CardDescription>
+        <CardDescription>View and manage customer orders (Real-time updates enabled)</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

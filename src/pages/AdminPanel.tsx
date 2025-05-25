@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,9 +9,57 @@ import PosterManagement from '@/components/admin/PosterManagement';
 import CustomerManagement from '@/components/admin/CustomerManagement';
 import OrderManagement from '@/components/admin/OrderManagement';
 import PromotionsManagement from '@/components/admin/PromotionsManagement';
+import { initializeRealtime } from '@/integrations/supabase/setup-realtime';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [statsData, setStatsData] = useState({
+    revenue: 0,
+    orders: 0,
+    customers: 0,
+    posters: 0
+  });
+
+  useEffect(() => {
+    // Initialize realtime subscriptions
+    initializeRealtime();
+    
+    // Fetch dashboard stats
+    fetchDashboardStats();
+  }, []);
+  
+  const fetchDashboardStats = async () => {
+    try {
+      // Fetch revenue data
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select('total');
+      
+      // Fetch customer count
+      const { count: customerCount, error: customerError } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true });
+        
+      // Fetch poster count
+      const { count: posterCount, error: posterError } = await supabase
+        .from('posters')
+        .select('id', { count: 'exact', head: true });
+      
+      if (!orderError && !customerError && !posterError) {
+        const totalRevenue = orderData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+        
+        setStatsData({
+          revenue: totalRevenue,
+          orders: orderData?.length || 0,
+          customers: customerCount || 0,
+          posters: posterCount || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,8 +106,8 @@ const AdminPanel = () => {
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">₹45,231</div>
-                    <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                    <div className="text-2xl font-bold">₹{statsData.revenue.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">From {statsData.orders} orders</p>
                   </CardContent>
                 </Card>
                 
@@ -69,8 +117,8 @@ const AdminPanel = () => {
                     <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">+2350</div>
-                    <p className="text-xs text-muted-foreground">+180.1% from last month</p>
+                    <div className="text-2xl font-bold">{statsData.orders}</div>
+                    <p className="text-xs text-muted-foreground">Total orders placed</p>
                   </CardContent>
                 </Card>
                 
@@ -80,8 +128,8 @@ const AdminPanel = () => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">+12,234</div>
-                    <p className="text-xs text-muted-foreground">+19% from last month</p>
+                    <div className="text-2xl font-bold">{statsData.customers}</div>
+                    <p className="text-xs text-muted-foreground">Registered users</p>
                   </CardContent>
                 </Card>
                 
@@ -91,8 +139,8 @@ const AdminPanel = () => {
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">573</div>
-                    <p className="text-xs text-muted-foreground">+201 since last hour</p>
+                    <div className="text-2xl font-bold">{statsData.posters}</div>
+                    <p className="text-xs text-muted-foreground">Total posters available</p>
                   </CardContent>
                 </Card>
               </div>

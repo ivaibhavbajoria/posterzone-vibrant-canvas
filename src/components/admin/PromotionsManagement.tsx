@@ -94,14 +94,11 @@ const PromotionsManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw error;
+        console.error('Error fetching coupons:', error);
+        toast.error('Failed to fetch coupons');
+        return;
       }
-      // Type cast the data to match our interface
-      const typedCoupons = (data || []).map(coupon => ({
-        ...coupon,
-        type: coupon.type as CouponType
-      }));
-      setCoupons(typedCoupons);
+      setCoupons(data || []);
     } catch (error) {
       console.error('Error fetching coupons:', error);
       toast.error('Failed to fetch coupons');
@@ -116,7 +113,9 @@ const PromotionsManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw error;
+        console.error('Error fetching bundles:', error);
+        toast.error('Failed to fetch bundles');
+        return;
       }
       setBundles(data || []);
     } catch (error) {
@@ -154,7 +153,8 @@ const PromotionsManagement = () => {
         min_order_amount: parseFloat(couponFormData.min_order_amount) || 0,
         max_uses: couponFormData.max_uses ? parseInt(couponFormData.max_uses) : null,
         expires_at: couponFormData.expires_at || null,
-        is_active: couponFormData.is_active
+        is_active: couponFormData.is_active,
+        current_uses: 0
       };
 
       if (editingCoupon) {
@@ -163,15 +163,20 @@ const PromotionsManagement = () => {
           .update(couponData)
           .eq('id', editingCoupon.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Coupon update error:', error);
+          throw error;
+        }
         toast.success('Coupon updated successfully');
       } else {
-        // Use service role for admin operations
         const { error } = await supabase
           .from('coupons')
           .insert([couponData]);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Coupon creation error:', error);
+          throw error;
+        }
         toast.success('Coupon created successfully');
       }
 
@@ -180,7 +185,7 @@ const PromotionsManagement = () => {
       fetchCoupons();
     } catch (error) {
       console.error('Error saving coupon:', error);
-      toast.error('Failed to save coupon');
+      toast.error(`Failed to save coupon: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -207,14 +212,20 @@ const PromotionsManagement = () => {
           .update(bundleData)
           .eq('id', editingBundle.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Bundle update error:', error);
+          throw error;
+        }
         toast.success('Bundle updated successfully');
       } else {
         const { error } = await supabase
           .from('bundles')
           .insert([bundleData]);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Bundle creation error:', error);
+          throw error;
+        }
         toast.success('Bundle created successfully');
       }
 
@@ -223,7 +234,7 @@ const PromotionsManagement = () => {
       fetchBundles();
     } catch (error) {
       console.error('Error saving bundle:', error);
-      toast.error('Failed to save bundle');
+      toast.error(`Failed to save bundle: ${error.message}`);
     } finally {
       setIsLoading(false);
     }

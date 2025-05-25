@@ -1,7 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, CreditCard, ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -14,9 +14,8 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
 
 const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
@@ -24,6 +23,8 @@ const CheckoutPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+  const [userProfile, setUserProfile] = useState(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -33,14 +34,45 @@ const CheckoutPage = () => {
     city: "",
     state: "",
     zipCode: "",
-    country: "US",
-    cardName: "",
-    cardNumber: "",
-    expMonth: "",
-    expYear: "",
-    cvv: "",
-    saveInfo: false,
+    phone: "",
   });
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          setUserProfile(profile);
+          // Pre-fill form with profile data if available
+          setFormData({
+            firstName: profile.full_name?.split(' ')[0] || "",
+            lastName: profile.full_name?.split(' ').slice(1).join(' ') || "",
+            email: user.email || "",
+            address: profile.address || "",
+            city: profile.city || "",
+            state: profile.state || "",
+            zipCode: profile.zip_code || "",
+            phone: profile.phone || "",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -50,37 +82,79 @@ const CheckoutPage = () => {
     });
   };
 
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData({
-      ...formData,
-      saveInfo: checked,
-    });
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate checkout process
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to place an order.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create order in database
+      const orderData = {
+        user_id: user.id,
+        total: getCartTotal(),
+        status: 'pending',
+        shipping_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          phone: formData.phone,
+        }
+      };
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: order.id,
+        poster_id: item.id,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
       setCheckoutComplete(true);
-      const randomOrderNumber = `PZ${Math.floor(100000 + Math.random() * 900000)}`;
-      setOrderNumber(randomOrderNumber);
+      setOrderNumber(order.id.slice(0, 8).toUpperCase());
       clearCart();
       
       toast({
         title: "Order placed successfully!",
-        description: `Your order #${randomOrderNumber} has been confirmed.`,
+        description: `Your order #${order.id.slice(0, 8).toUpperCase()} has been confirmed.`,
       });
-    }, 1500);
+
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast({
+        title: "Order failed",
+        description: "There was an error placing your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Calculate totals
@@ -142,7 +216,7 @@ const CheckoutPage = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Order Total:</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>₹{total.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -163,6 +237,11 @@ const CheckoutPage = () => {
     );
   }
 
+  // Check if user has complete profile information
+  const hasCompleteProfile = userProfile && 
+    formData.firstName && formData.lastName && formData.address && 
+    formData.city && formData.state && formData.zipCode;
+
   return (
     <div className="min-h-screen bg-white py-12">
       <div className="container mx-auto px-4">
@@ -177,193 +256,116 @@ const CheckoutPage = () => {
             {/* Checkout Form */}
             <div className="lg:col-span-2">
               <form onSubmit={handleSubmit}>
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Shipping Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input 
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input 
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="address">Address</Label>
-                      <Input 
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input 
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="state">State/Province</Label>
-                      <Input 
-                        id="state"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="zipCode">Zip/Postal Code</Label>
-                      <Input 
-                        id="zipCode"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="country">Country</Label>
-                      <Select 
-                        value={formData.country} 
-                        onValueChange={(value) => handleSelectChange("country", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="US">United States</SelectItem>
-                          <SelectItem value="CA">Canada</SelectItem>
-                          <SelectItem value="UK">United Kingdom</SelectItem>
-                          <SelectItem value="AU">Australia</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Payment Information</CardTitle>
-                    <CardDescription>All transactions are secure and encrypted</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <Label htmlFor="cardName">Name on Card</Label>
-                      <Input 
-                        id="cardName"
-                        name="cardName"
-                        value={formData.cardName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="cardNumber">Card Number</Label>
-                      <Input 
-                        id="cardNumber"
-                        name="cardNumber"
-                        placeholder="1234 5678 9012 3456"
-                        value={formData.cardNumber}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="expMonth">Expiration Date</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Select 
-                          value={formData.expMonth} 
-                          onValueChange={(value) => handleSelectChange("expMonth", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 12 }, (_, i) => {
-                              const month = i + 1;
-                              return (
-                                <SelectItem key={month} value={month.toString().padStart(2, '0')}>
-                                  {month.toString().padStart(2, '0')}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        <Select 
-                          value={formData.expYear} 
-                          onValueChange={(value) => handleSelectChange("expYear", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 10 }, (_, i) => {
-                              const year = new Date().getFullYear() + i;
-                              return (
-                                <SelectItem key={year} value={year.toString()}>
-                                  {year}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                {!hasCompleteProfile && (
+                  <Card className="mb-8">
+                    <CardHeader>
+                      <CardTitle>Shipping Information</CardTitle>
+                      <CardDescription>Please provide your shipping details</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input 
+                          id="firstName"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          required
+                        />
                       </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="cvv">CVV</Label>
-                      <Input 
-                        id="cvv"
-                        name="cvv"
-                        placeholder="123"
-                        value={formData.cvv}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2 flex items-center space-x-2 pt-2">
-                      <Checkbox 
-                        id="saveInfo"
-                        checked={formData.saveInfo}
-                        onCheckedChange={handleCheckboxChange}
-                      />
-                      <label htmlFor="saveInfo" className="text-sm text-gray-600">
-                        Save this information for next time
-                      </label>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div>
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input 
+                          id="lastName"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input 
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          disabled
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input 
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        <Input 
+                          id="city"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="state">State/Province</Label>
+                        <Input 
+                          id="state"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="zipCode">Zip/Postal Code</Label>
+                        <Input 
+                          id="zipCode"
+                          name="zipCode"
+                          value={formData.zipCode}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input 
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {hasCompleteProfile && (
+                  <Card className="mb-8">
+                    <CardHeader>
+                      <CardTitle>Shipping Information</CardTitle>
+                      <CardDescription>Using saved profile information</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
+                        <p><strong>Email:</strong> {formData.email}</p>
+                        <p><strong>Address:</strong> {formData.address}</p>
+                        <p><strong>City:</strong> {formData.city}, {formData.state} {formData.zipCode}</p>
+                        {formData.phone && <p><strong>Phone:</strong> {formData.phone}</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="flex justify-end">
                   <Button 
@@ -375,8 +377,7 @@ const CheckoutPage = () => {
                       <>Processing...</>
                     ) : (
                       <>
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        Place Order (${total.toFixed(2)})
+                        Place Order (₹{total.toFixed(2)})
                       </>
                     )}
                   </Button>
@@ -403,8 +404,8 @@ const CheckoutPage = () => {
                           <p className="font-medium">{item.title}</p>
                           {item.size && <p className="text-xs text-gray-500">Size: {item.size}</p>}
                           <div className="flex justify-between mt-1">
-                            <span className="text-sm">${item.price.toFixed(2)} × {item.quantity}</span>
-                            <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="text-sm">₹{item.price.toFixed(2)} × {item.quantity}</span>
+                            <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -414,19 +415,19 @@ const CheckoutPage = () => {
                   <div className="mt-4 pt-4 border-t space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
-                      <span>${subtotal.toFixed(2)}</span>
+                      <span>₹{subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipping</span>
-                      <span>${shipping.toFixed(2)}</span>
+                      <span>₹{shipping.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tax (estimated)</span>
-                      <span>${tax.toFixed(2)}</span>
+                      <span>₹{tax.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-lg pt-2 border-t">
                       <span>Total</span>
-                      <span>${total.toFixed(2)}</span>
+                      <span>₹{total.toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>
