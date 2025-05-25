@@ -17,13 +17,28 @@ import { Link } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
+interface ProfileWithAddress {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  phone: string | null;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
-  const [userProfile, setUserProfile] = useState(null);
+  const [userProfile, setUserProfile] = useState<ProfileWithAddress | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   const [formData, setFormData] = useState({
@@ -53,17 +68,18 @@ const CheckoutPage = () => {
           .single();
 
         if (profile) {
-          setUserProfile(profile);
+          const typedProfile = profile as ProfileWithAddress;
+          setUserProfile(typedProfile);
           // Pre-fill form with profile data if available
           setFormData({
-            firstName: profile.full_name?.split(' ')[0] || "",
-            lastName: profile.full_name?.split(' ').slice(1).join(' ') || "",
+            firstName: typedProfile.full_name?.split(' ')[0] || "",
+            lastName: typedProfile.full_name?.split(' ').slice(1).join(' ') || "",
             email: user.email || "",
-            address: profile.address || "",
-            city: profile.city || "",
-            state: profile.state || "",
-            zipCode: profile.zip_code || "",
-            phone: profile.phone || "",
+            address: typedProfile.address || "",
+            city: typedProfile.city || "",
+            state: typedProfile.state || "",
+            zipCode: typedProfile.zip_code || "",
+            phone: typedProfile.phone || "",
           });
         }
       }
@@ -122,10 +138,10 @@ const CheckoutPage = () => {
 
       if (orderError) throw orderError;
 
-      // Create order items
+      // Create order items - fix the type issue by converting id to string
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
-        poster_id: item.id,
+        poster_id: String(item.id),
         quantity: item.quantity,
         price: item.price
       }));

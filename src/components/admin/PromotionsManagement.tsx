@@ -84,6 +84,28 @@ const PromotionsManagement = () => {
   useEffect(() => {
     fetchCoupons();
     fetchBundles();
+
+    // Set up real-time subscriptions
+    const couponsChannel = supabase
+      .channel('coupons_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'coupons' }, 
+        () => fetchCoupons()
+      )
+      .subscribe();
+
+    const bundlesChannel = supabase
+      .channel('bundles_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'bundles' }, 
+        () => fetchBundles()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(couponsChannel);
+      supabase.removeChannel(bundlesChannel);
+    };
   }, []);
 
   const fetchCoupons = async () => {
@@ -98,7 +120,14 @@ const PromotionsManagement = () => {
         toast.error('Failed to fetch coupons');
         return;
       }
-      setCoupons(data || []);
+      
+      // Type assertion to ensure proper typing
+      const typedCoupons = (data || []).map(coupon => ({
+        ...coupon,
+        type: coupon.type as CouponType
+      }));
+      
+      setCoupons(typedCoupons);
     } catch (error) {
       console.error('Error fetching coupons:', error);
       toast.error('Failed to fetch coupons');
@@ -182,8 +211,7 @@ const PromotionsManagement = () => {
 
       resetCouponForm();
       setIsCouponDialogOpen(false);
-      fetchCoupons();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving coupon:', error);
       toast.error(`Failed to save coupon: ${error.message}`);
     } finally {
@@ -231,8 +259,7 @@ const PromotionsManagement = () => {
 
       resetBundleForm();
       setIsBundleDialogOpen(false);
-      fetchBundles();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving bundle:', error);
       toast.error(`Failed to save bundle: ${error.message}`);
     } finally {
@@ -276,7 +303,6 @@ const PromotionsManagement = () => {
       
       if (error) throw error;
       toast.success('Coupon deleted successfully');
-      fetchCoupons();
     } catch (error) {
       console.error('Error deleting coupon:', error);
       toast.error('Failed to delete coupon');
@@ -294,7 +320,6 @@ const PromotionsManagement = () => {
       
       if (error) throw error;
       toast.success('Bundle deleted successfully');
-      fetchBundles();
     } catch (error) {
       console.error('Error deleting bundle:', error);
       toast.error('Failed to delete bundle');

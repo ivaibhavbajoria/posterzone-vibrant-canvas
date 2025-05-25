@@ -4,15 +4,23 @@ import { supabase } from './client';
 // This file is used to set up realtime subscriptions for tables
 export const enableRealtimeForTable = async (tableName: string) => {
   try {
-    // Enable row level changes for the table
-    const { error } = await supabase.rpc('supabase_functions.enable_realtime', { 
-      table_name: tableName 
-    });
+    // Check if realtime is already enabled by attempting to subscribe
+    const testChannel = supabase
+      .channel(`test_${tableName}`)
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: tableName }, 
+        () => {}
+      );
+    
+    const { error } = await testChannel.subscribe();
     
     if (error) {
       console.error(`Error enabling realtime for ${tableName}:`, error.message);
       return false;
     }
+    
+    // Unsubscribe the test channel
+    await supabase.removeChannel(testChannel);
     
     console.log(`Realtime enabled for ${tableName}`);
     return true;
