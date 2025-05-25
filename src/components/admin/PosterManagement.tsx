@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,6 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 
 // Type definitions
-type PriceCategory = 'budget' | 'standard' | 'premium';
-
 interface Category {
   id: string;
   name: string;
@@ -31,7 +30,6 @@ interface Poster {
   image_url: string;
   is_trending: boolean;
   is_best_seller: boolean;
-  price_category: PriceCategory;
   created_at: string;
 }
 
@@ -40,7 +38,6 @@ interface PosterFormData {
   description: string;
   price: string;
   category: string;
-  price_category: PriceCategory;
   is_trending: boolean;
   is_best_seller: boolean;
   image: File | null;
@@ -57,7 +54,6 @@ const PosterManagement = () => {
     description: '',
     price: '',
     category: '',
-    price_category: 'standard',
     is_trending: false,
     is_best_seller: false,
     image: null
@@ -65,22 +61,32 @@ const PosterManagement = () => {
 
   // Fetch posters
   const fetchPosters = async () => {
-    const { data, error } = await supabase
-      .from('posters')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    setPosters(data as Poster[]);
+    try {
+      const { data, error } = await supabase
+        .from('posters')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      setPosters(data as Poster[]);
+    } catch (error) {
+      console.error('Error fetching posters:', error);
+      toast.error('Failed to fetch posters');
+    }
   };
 
   // Fetch categories
   const fetchCategories = async () => {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name');
-    if (error) throw new Error(error.message);
-    setCategories(data as Category[]);
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+      if (error) throw new Error(error.message);
+      setCategories(data as Category[]);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to fetch categories');
+    }
   };
 
   useEffect(() => {
@@ -144,7 +150,6 @@ const PosterManagement = () => {
         description: formData.description,
         price: parseFloat(formData.price),
         category: formData.category,
-        price_category: formData.price_category,
         is_trending: formData.is_trending,
         is_best_seller: formData.is_best_seller,
         image_url: imageUrl
@@ -172,7 +177,6 @@ const PosterManagement = () => {
         description: '',
         price: '',
         category: '',
-        price_category: 'standard',
         is_trending: false,
         is_best_seller: false,
         image: null
@@ -195,7 +199,6 @@ const PosterManagement = () => {
       description: poster.description,
       price: poster.price.toString(),
       category: poster.category,
-      price_category: poster.price_category,
       is_trending: poster.is_trending,
       is_best_seller: poster.is_best_seller,
       image: null
@@ -227,7 +230,6 @@ const PosterManagement = () => {
       description: '',
       price: '',
       category: '',
-      price_category: 'standard',
       is_trending: false,
       is_best_seller: false,
       image: null
@@ -297,38 +299,20 @@ const PosterManagement = () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="category">Category *</Label>
-                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.name}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="price_category">Price Category</Label>
-                    <Select 
-                      value={formData.price_category} 
-                      onValueChange={(value: PriceCategory) => handleInputChange('price_category', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select price category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="budget">Budget</SelectItem>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="premium">Premium</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>
@@ -389,7 +373,6 @@ const PosterManagement = () => {
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Price Category</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -407,11 +390,6 @@ const PosterManagement = () => {
                 <TableCell className="font-medium">{poster.title}</TableCell>
                 <TableCell>{poster.category}</TableCell>
                 <TableCell>₹{poster.price}</TableCell>
-                <TableCell>
-                  <Badge variant={poster.price_category === 'premium' ? 'default' : 'secondary'}>
-                    {poster.price_category}
-                  </Badge>
-                </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     {poster.is_trending && <Badge variant="destructive">Trending</Badge>}

@@ -1,522 +1,257 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
-import { 
-  Search, 
-  FileText, 
-  Filter, 
-  Calendar, 
-  Download,
-  Loader2, 
-  Eye, 
-  RefreshCw,
-  Wifi,
-  WifiOff
-} from 'lucide-react';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Package, Download } from 'lucide-react';
+import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
-import PDFInvoice from './PDFInvoice';
-import { format } from 'date-fns';
-import { formatCurrency } from '@/utils/currency';
+
+interface Order {
+  id: string;
+  total: number;
+  status: string;
+  created_at: string;
+  shipping_address: any;
+  order_items: {
+    poster_id: string;
+    quantity: number;
+    price: number;
+    posters: {
+      title: string;
+      image_url: string;
+    };
+  }[];
+}
 
 const OrderManagement = () => {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
 
-  // Real-time subscription for orders
-  useEffect(() => {
-    const channel = supabase
-      .channel('orders-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          console.log('Real-time order update:', payload);
-          handleRealTimeUpdate(payload);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items'
-        },
-        (payload) => {
-          console.log('Real-time order items update:', payload);
-          // Refresh orders when order items change
-          fetchOrders();
-        }
-      )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-        setIsRealTimeConnected(status === 'SUBSCRIBED');
-        if (status === 'SUBSCRIBED') {
-          toast({
-            title: "Real-time Updates Enabled",
-            description: "Orders will update automatically.",
-          });
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const handleRealTimeUpdate = (payload) => {
-    const { eventType, new: newRecord, old: oldRecord } = payload;
-    
-    setOrders(currentOrders => {
-      switch (eventType) {
-        case 'INSERT':
-          // Add new order and fetch its details
-          fetchOrderDetails(newRecord.id).then(orderWithItems => {
-            if (orderWithItems) {
-              setOrders(prev => [orderWithItems, ...prev]);
-            }
-          });
-          return currentOrders;
-          
-        case 'UPDATE':
-          return currentOrders.map(order => 
-            order.id === newRecord.id 
-              ? { ...order, ...newRecord }
-              : order
-          );
-          
-        case 'DELETE':
-          return currentOrders.filter(order => order.id !== oldRecord.id);
-          
-        default:
-          return currentOrders;
-      }
-    });
-  };
-
-  const fetchOrderDetails = async (orderId) => {
+  const fetchOrders = async () => {
+    setIsLoading(true);
     try {
-      const { data: orderData, error: orderError } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
-          profiles:user_id (
-            full_name
-          )
-        `)
-        .eq('id', orderId)
-        .single();
-      
-      if (orderError) throw orderError;
-      
-      const { data: orderItems, error: itemsError } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          poster:poster_id (
-            title,
-            image_url
-          )
-        `)
-        .eq('order_id', orderId);
-      
-      if (itemsError) throw itemsError;
-      
-      return {
-        ...orderData,
-        items: orderItems.map(item => ({
-          id: item.id,
-          title: item.poster?.title || "Unknown Product",
-          image: item.poster?.image_url,
-          price: item.price,
-          quantity: item.quantity
-        }))
-      };
-    } catch (error) {
-      console.error('Error fetching order details:', error);
-      return null;
-    }
-  };
-
-  // Fetch orders from Supabase
-  const fetchOrders = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch orders with user information
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          profiles:user_id (
-            full_name
+          order_items (
+            poster_id,
+            quantity,
+            price,
+            posters (
+              title,
+              image_url
+            )
           )
         `)
         .order('created_at', { ascending: false });
-      
-      if (ordersError) throw ordersError;
-      
-      // For each order, fetch the order items
-      const ordersWithItems = await Promise.all(
-        ordersData.map(async (order) => {
-          const { data: orderItems, error: itemsError } = await supabase
-            .from('order_items')
-            .select(`
-              *,
-              poster:poster_id (
-                title,
-                image_url
-              )
-            `)
-            .eq('order_id', order.id);
-          
-          if (itemsError) throw itemsError;
-          
-          return {
-            ...order,
-            items: orderItems.map(item => ({
-              id: item.id,
-              title: item.poster?.title || "Unknown Product",
-              image: item.poster?.image_url,
-              price: item.price,
-              quantity: item.quantity
-            }))
-          };
-        })
-      );
-      
-      setOrders(ordersWithItems);
-      console.log("Orders loaded:", ordersWithItems.length);
+
+      if (error) {
+        console.error('Error fetching orders:', error);
+        toast.error('Failed to fetch orders');
+        return;
+      }
+
+      setOrders(data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load orders.",
-      });
+      toast.error('Failed to fetch orders');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+  }, []);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchOrders();
-    setRefreshing(false);
-    toast({
-      title: "Refreshed",
-      description: "Orders have been refreshed.",
-    });
-  };
-
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      order.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
-
-  const handleViewInvoice = (order) => {
-    setSelectedOrder(order);
-    setIsInvoiceOpen(true);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'shipped': return 'bg-purple-100 text-purple-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-yellow-100 text-yellow-800'; // pending
-    }
-  };
-
-  const updateOrderStatus = async (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', orderId);
-      
+
       if (error) throw error;
-      
-      toast({
-        title: "Status Updated",
-        description: `Order status changed to ${newStatus}.`,
-      });
+
+      toast.success('Order status updated successfully');
+      fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update order status.",
-      });
+      toast.error('Failed to update order status');
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return format(new Date(dateString), 'MMM d, yyyy h:mm a');
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'secondary';
+      case 'processing':
+        return 'default';
+      case 'shipped':
+        return 'outline';
+      case 'delivered':
+        return 'default';
+      case 'cancelled':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatAddress = (address: any) => {
+    if (!address) return 'No address provided';
+    return `${address.street}, ${address.city}, ${address.state} - ${address.zipCode}`;
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-semibold">Order Management</h2>
-            <div className="flex items-center space-x-1">
-              {isRealTimeConnected ? (
-                <Wifi className="h-4 w-4 text-green-500" />
-              ) : (
-                <WifiOff className="h-4 w-4 text-red-500" />
-              )}
-              <span className="text-xs text-gray-500">
-                {isRealTimeConnected ? 'Live' : 'Offline'}
-              </span>
-            </div>
-          </div>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleRefresh}
-              disabled={refreshing || loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                type="text"
-                placeholder="Search orders..."
-                className="pl-9 w-full md:w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setStatusFilter('all')}>All Orders</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setStatusFilter('pending')}>Pending</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('processing')}>Processing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('shipped')}>Shipped</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('completed')}>Completed</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('cancelled')}>Cancelled</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex justify-center items-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading orders...</span>
-            </div>
-          ) : (
-            <Table>
-              <TableCaption>List of all orders - Real-time updates enabled</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length > 0 ? (
-                  filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-mono">{order.id.slice(0, 8)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1 text-gray-500" />
-                          {formatDate(order.created_at)}
-                        </div>
-                      </TableCell>
-                      <TableCell>{order.profiles?.full_name || "Anonymous"}</TableCell>
-                      <TableCell>{order.items?.length || 0} items</TableCell>
-                      <TableCell>{formatCurrency(parseFloat(order.total))}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="flex items-center gap-1 text-xs"
-                            onClick={() => handleViewInvoice(order)}
-                          >
-                            <Eye className="h-3 w-3" /> View
+    <Card>
+      <CardHeader>
+        <CardTitle>Order Management</CardTitle>
+        <CardDescription>View and manage customer orders</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order ID</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orders.map((order) => (
+              <TableRow key={order.id}>
+                <TableCell className="font-mono">
+                  #{order.id.slice(0, 8)}
+                </TableCell>
+                <TableCell>{formatDate(order.created_at)}</TableCell>
+                <TableCell>
+                  {order.order_items?.length || 0} item(s)
+                </TableCell>
+                <TableCell>₹{order.total}</TableCell>
+                <TableCell>
+                  <Badge variant={getStatusColor(order.status)}>
+                    {order.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Dialog open={isOrderDetailsOpen} onOpenChange={setIsOrderDetailsOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Order Details</DialogTitle>
+                          <DialogDescription>
+                            Order #{selectedOrder?.id.slice(0, 8)}
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        {selectedOrder && (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="font-semibold">Order Information</h4>
+                                <p>Date: {formatDate(selectedOrder.created_at)}</p>
+                                <p>Total: ₹{selectedOrder.total}</p>
+                                <p>Status: {selectedOrder.status}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold">Shipping Address</h4>
+                                <p className="text-sm">{formatAddress(selectedOrder.shipping_address)}</p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">Order Items</h4>
+                              <div className="space-y-2">
+                                {selectedOrder.order_items?.map((item, index) => (
+                                  <div key={index} className="flex items-center gap-3 p-2 border rounded">
+                                    <img
+                                      src={item.posters.image_url || '/placeholder.svg'}
+                                      alt={item.posters.title}
+                                      className="w-12 h-12 object-cover rounded"
+                                    />
+                                    <div className="flex-1">
+                                      <p className="font-medium">{item.posters.title}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        Quantity: {item.quantity} × ₹{item.price}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">Update Status</h4>
+                              <Select
+                                value={selectedOrder.status}
+                                onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="processing">Processing</SelectItem>
+                                  <SelectItem value="shipped">Shipped</SelectItem>
+                                  <SelectItem value="delivered">Delivered</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsOrderDetailsOpen(false)}>
+                            Close
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm">Status</Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'pending')}>
-                                Pending
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'processing')}>
-                                Processing
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'shipped')}>
-                                Shipped
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'completed')}>
-                                Completed
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'cancelled')}>
-                                Cancelled
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="flex items-center gap-1 text-xs"
-                            onClick={() => handleViewInvoice(order)}
-                          >
-                            <Download className="h-3 w-3" /> PDF
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-gray-500">
-                      No orders found matching your criteria
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </div>
-      
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{orders.length}</div>
-          </CardContent>
-        </Card>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {orders.filter(order => order.status === 'pending').length}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Shipped Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {orders.filter(order => order.status === 'shipped').length}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Completed Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {orders.filter(order => order.status === 'completed').length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Invoice Dialog */}
-      <Dialog open={isInvoiceOpen} onOpenChange={setIsInvoiceOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Order Invoice</DialogTitle>
-          </DialogHeader>
-          {selectedOrder && <PDFInvoice order={selectedOrder} />}
-        </DialogContent>
-      </Dialog>
-    </motion.div>
+        {orders.length === 0 && !isLoading && (
+          <div className="text-center py-8 text-muted-foreground">
+            No orders found
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

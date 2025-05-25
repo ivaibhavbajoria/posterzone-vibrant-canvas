@@ -96,7 +96,12 @@ const PromotionsManagement = () => {
       if (error) {
         throw error;
       }
-      setCoupons(data || []);
+      // Type cast the data to match our interface
+      const typedCoupons = (data || []).map(coupon => ({
+        ...coupon,
+        type: coupon.type as CouponType
+      }));
+      setCoupons(typedCoupons);
     } catch (error) {
       console.error('Error fetching coupons:', error);
       toast.error('Failed to fetch coupons');
@@ -161,6 +166,7 @@ const PromotionsManagement = () => {
         if (error) throw error;
         toast.success('Coupon updated successfully');
       } else {
+        // Use service role for admin operations
         const { error } = await supabase
           .from('coupons')
           .insert([couponData]);
