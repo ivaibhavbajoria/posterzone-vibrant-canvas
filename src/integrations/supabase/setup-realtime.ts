@@ -12,12 +12,12 @@ export const enableRealtimeForTable = async (tableName: string) => {
         () => {}
       );
     
-    const status = await testChannel.subscribe();
-    
-    if (status !== 'SUBSCRIBED') {
-      console.error(`Error enabling realtime for ${tableName}: ${status}`);
-      return false;
-    }
+    await testChannel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') {
+        console.error(`Error enabling realtime for ${tableName}: ${status}`);
+        return false;
+      }
+    });
     
     // Unsubscribe the test channel
     await supabase.removeChannel(testChannel);
