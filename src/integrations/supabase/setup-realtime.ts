@@ -12,10 +12,10 @@ export const enableRealtimeForTable = async (tableName: string) => {
         () => {}
       );
     
-    const { error } = await testChannel.subscribe();
+    const status = await testChannel.subscribe();
     
-    if (error) {
-      console.error(`Error enabling realtime for ${tableName}:`, error.message);
+    if (status !== 'SUBSCRIBED') {
+      console.error(`Error enabling realtime for ${tableName}: ${status}`);
       return false;
     }
     
