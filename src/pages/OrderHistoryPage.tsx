@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +65,14 @@ const OrderHistoryPage = () => {
   };
 
   const fetchUserOrders = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Fetching orders for user:', user.id);
+      
       const { data: ordersData, error } = await supabase
         .from('orders')
         .select(`
@@ -79,10 +85,15 @@ const OrderHistoryPage = () => {
             )
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching orders:', error);
+        throw error;
+      }
+
+      console.log('Orders data received:', ordersData);
 
       const formattedOrders = ordersData?.map(order => ({
         ...order,
@@ -95,6 +106,7 @@ const OrderHistoryPage = () => {
         })) || []
       })) || [];
 
+      console.log('Formatted orders:', formattedOrders);
       setOrders(formattedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -160,6 +172,17 @@ const OrderHistoryPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
           <div className="text-lg">Loading your orders...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-4">Order History</h1>
+          <p className="text-gray-600">Please log in to view your order history.</p>
         </div>
       </div>
     );
