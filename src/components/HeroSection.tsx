@@ -17,6 +17,7 @@ const HeroSection = () => {
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4">
               <span className="text-posterzone-charcoal">Transform Your Space With </span>
+              <br />
               <span className="text-gradient">Stunning Art</span>
             </h1>
             <p className="text-lg text-gray-600 mb-8">
