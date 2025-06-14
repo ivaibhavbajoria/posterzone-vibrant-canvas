@@ -6,29 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Shield, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 const AdminAuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user, isAdmin } = useAuth();
+  const { adminSignIn, isAdminLoggedIn } = useAdminAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && isAdmin) {
+    if (isAdminLoggedIn) {
       navigate("/admin");
-    } else if (user && !isAdmin) {
-      navigate("/");
     }
-  }, [user, isAdmin, navigate]);
+  }, [isAdminLoggedIn, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await signIn(email, password);
+      await adminSignIn(email, password);
+      navigate("/admin");
     } catch (error) {
       console.error("Admin authentication error:", error);
     } finally {
@@ -59,7 +58,7 @@ const AdminAuthPage: React.FC = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Admin Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -71,7 +70,7 @@ const AdminAuthPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Admin Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -83,7 +82,7 @@ const AdminAuthPage: React.FC = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? "Signing in..." : "Admin Sign In"}
               </Button>
             </form>
           </CardContent>

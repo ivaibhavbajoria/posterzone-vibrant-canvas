@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift, LogOut, Settings, UserPlus } from 'lucide-react';
+import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift, LogOut, Settings } from 'lucide-react';
 import DashboardCharts from '@/components/DashboardCharts';
 import AnalyticsCharts from '@/components/AnalyticsCharts';
 import PosterManagement from '@/components/admin/PosterManagement';
@@ -13,7 +12,7 @@ import PromotionsManagement from '@/components/admin/PromotionsManagement';
 import AdminSettings from '@/components/admin/AdminSettings';
 import { initializeRealtime } from '@/integrations/supabase/setup-realtime';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AdminPanel = () => {
@@ -24,13 +23,13 @@ const AdminPanel = () => {
     customers: 0,
     posters: 0
   });
-  const { signOut, user, isAdmin } = useAuth();
+  const { adminSignOut, isAdminLoggedIn, adminUser } = useAdminAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is admin, if not redirect
-    if (!isAdmin && user) {
-      navigate('/');
+    // Check if admin is logged in, if not redirect to admin auth
+    if (!isAdminLoggedIn) {
+      navigate('/admin/auth');
       return;
     }
 
@@ -39,7 +38,7 @@ const AdminPanel = () => {
     
     // Fetch dashboard stats
     fetchDashboardStats();
-  }, [isAdmin, user, navigate]);
+  }, [isAdminLoggedIn, navigate]);
   
   const fetchDashboardStats = async () => {
     try {
@@ -75,26 +74,23 @@ const AdminPanel = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut();
-      navigate('/');
+      await adminSignOut();
+      navigate('/admin/auth');
     } catch (error) {
       console.error('Error logging out:', error);
     }
   };
 
-  // If user is not admin, show access denied
-  if (!isAdmin) {
+  // If admin is not logged in, show loading or redirect
+  if (!isAdminLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center text-red-600">Access Denied</CardTitle>
+            <CardTitle className="text-center">Redirecting...</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="mb-4">You don't have permission to access the admin panel.</p>
-            <Button onClick={() => navigate('/')} className="w-full">
-              Return to Home
-            </Button>
+            <p className="mb-4">Please wait while we redirect you to the admin login.</p>
           </CardContent>
         </Card>
       </div>
@@ -110,7 +106,7 @@ const AdminPanel = () => {
             <p className="text-gray-600 mt-2">Manage your poster store from here</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Welcome, {user?.email}</span>
+            <span className="text-sm text-gray-600">Welcome, {adminUser?.email}</span>
             <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
               <LogOut className="h-4 w-4" />
               Logout
