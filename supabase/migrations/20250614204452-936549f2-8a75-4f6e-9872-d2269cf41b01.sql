@@ -1,5 +1,4 @@
 
-
 -- Create a table for admin credentials
 CREATE TABLE public.admin_credentials (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -68,9 +67,29 @@ CREATE POLICY "Only admins can update store settings"
   FOR UPDATE 
   USING (public.check_admin_status());
 
+CREATE POLICY "Only admins can insert store settings" 
+  ON public.store_settings 
+  FOR INSERT 
+  WITH CHECK (public.check_admin_status());
+
 -- Insert default store settings
 INSERT INTO public.store_settings (store_name, store_email, currency, tax_rate) 
 VALUES ('PosterZone', 'contact@posterzone.com', 'INR', 8.00);
+
+-- Add RLS policies for posters table to allow admin management
+ALTER TABLE public.posters ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for poster management
+CREATE POLICY "Admins can manage all posters" 
+  ON public.posters 
+  FOR ALL 
+  USING (public.check_admin_status());
+
+-- Allow public read access to posters for the storefront
+CREATE POLICY "Public can view active posters" 
+  ON public.posters 
+  FOR SELECT 
+  USING (true);
 
 -- Create function to hash passwords (simple version for demo)
 CREATE OR REPLACE FUNCTION public.hash_password(password TEXT)
@@ -106,3 +125,28 @@ BEGIN
 END;
 $$;
 
+-- Create storage bucket for posters if it doesn't exist
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('posters', 'posters', true, 10485760, '{image/jpeg,image/png,image/webp}')
+ON CONFLICT (id) DO NOTHING;
+
+-- Create storage policies for poster uploads
+CREATE POLICY "Admins can upload poster images" 
+  ON storage.objects 
+  FOR INSERT 
+  WITH CHECK (bucket_id = 'posters' AND public.check_admin_status());
+
+CREATE POLICY "Admins can update poster images" 
+  ON storage.objects 
+  FOR UPDATE 
+  USING (bucket_id = 'posters' AND public.check_admin_status());
+
+CREATE POLICY "Admins can delete poster images" 
+  ON storage.objects 
+  FOR DELETE 
+  USING (bucket_id = 'posters' AND public.check_admin_status());
+
+CREATE POLICY "Public can view poster images" 
+  ON storage.objects 
+  FOR SELECT 
+  USING (bucket_id = 'posters');

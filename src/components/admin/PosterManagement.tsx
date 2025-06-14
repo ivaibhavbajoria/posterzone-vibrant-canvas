@@ -59,14 +59,21 @@ const PosterManagement = () => {
     image: null
   });
 
-  // Fetch posters
+  // Fetch posters with better error handling
   const fetchPosters = async () => {
     try {
+      console.log('Fetching posters...');
       const { data, error } = await supabase
         .from('posters')
         .select('*')
         .order('created_at', { ascending: false });
-      if (error) throw new Error(error.message);
+      
+      if (error) {
+        console.error('Error fetching posters:', error);
+        throw new Error(error.message);
+      }
+      
+      console.log('Posters fetched successfully:', data);
       setPosters(data as Poster[]);
     } catch (error) {
       console.error('Error fetching posters:', error);
@@ -74,14 +81,21 @@ const PosterManagement = () => {
     }
   };
 
-  // Fetch categories
+  // Fetch categories with better error handling
   const fetchCategories = async () => {
     try {
+      console.log('Fetching categories...');
       const { data, error } = await supabase
         .from('categories')
         .select('*')
         .order('name');
-      if (error) throw new Error(error.message);
+      
+      if (error) {
+        console.error('Error fetching categories:', error);
+        throw new Error(error.message);
+      }
+      
+      console.log('Categories fetched successfully:', data);
       setCategories(data as Category[]);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -104,6 +118,7 @@ const PosterManagement = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.log('Image selected:', file.name, file.size);
       setFormData(prev => ({
         ...prev,
         image: file
@@ -112,26 +127,59 @@ const PosterManagement = () => {
   };
 
   const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `poster-${Date.now()}.${fileExt}`;
-    const filePath = `posters/${fileName}`;
+    try {
+      console.log('Starting image upload for file:', file.name);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `poster-${Date.now()}.${fileExt}`;
+      const filePath = `posters/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('posters')
-      .upload(filePath, file);
+      console.log('Uploading to path:', filePath);
 
-    if (uploadError) {
-      throw uploadError;
+      // First try to create the bucket if it doesn't exist
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const posterBucket = buckets?.find(bucket => bucket.name === 'posters');
+      
+      if (!posterBucket) {
+        console.log('Creating posters bucket...');
+        const { error: bucketError } = await supabase.storage.createBucket('posters', {
+          public: true,
+          fileSizeLimit: 10485760, // 10MB
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+        });
+        
+        if (bucketError) {
+          console.error('Error creating bucket:', bucketError);
+          throw new Error('Failed to create storage bucket');
+        }
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('posters')
+        .upload(filePath, file, {
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage
+        .from('posters')
+        .getPublicUrl(filePath);
+
+      console.log('Image uploaded successfully, public URL:', data.publicUrl);
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error in uploadImage:', error);
+      throw error;
     }
-
-    const { data } = supabase.storage
-      .from('posters')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
   };
 
   const handleSubmit = async () => {
+    console.log('Starting form submission with data:', formData);
+    
     if (!formData.title || !formData.price || !formData.category) {
       toast.error('Please fill in all required fields');
       return;
@@ -142,6 +190,7 @@ const PosterManagement = () => {
       let imageUrl = editingPoster?.image_url || '';
       
       if (formData.image) {
+        console.log('Uploading new image...');
         imageUrl = await uploadImage(formData.image);
       }
 
@@ -156,23 +205,34 @@ const PosterManagement = () => {
         updated_at: new Date().toISOString()
       };
 
+      console.log('Submitting poster data:', posterData);
+
       if (editingPoster) {
+        console.log('Updating existing poster with ID:', editingPoster.id);
         const { error } = await supabase
           .from('posters')
           .update(posterData)
           .eq('id', editingPoster.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
         toast.success('Poster updated successfully');
       } else {
+        console.log('Creating new poster...');
         const { error } = await supabase
           .from('posters')
           .insert([posterData]);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
         toast.success('Poster added successfully');
       }
 
+      // Reset form and close dialog
       setFormData({
         title: '',
         description: '',
@@ -184,16 +244,19 @@ const PosterManagement = () => {
       });
       setIsAddDialogOpen(false);
       setEditingPoster(null);
-      fetchPosters();
+      
+      // Refresh the posters list
+      await fetchPosters();
     } catch (error) {
       console.error('Error saving poster:', error);
-      toast.error('Failed to save poster');
+      toast.error(`Failed to save poster: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleEdit = (poster: Poster) => {
+    console.log('Editing poster:', poster);
     setEditingPoster(poster);
     setFormData({
       title: poster.title,
@@ -211,12 +274,16 @@ const PosterManagement = () => {
     if (!confirm('Are you sure you want to delete this poster?')) return;
 
     try {
+      console.log('Deleting poster with ID:', id);
       const { error } = await supabase
         .from('posters')
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
       toast.success('Poster deleted successfully');
       fetchPosters();
     } catch (error) {
