@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift } from 'lucide-react';
+import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift, LogOut } from 'lucide-react';
 import DashboardCharts from '@/components/DashboardCharts';
 import PosterManagement from '@/components/admin/PosterManagement';
 import CustomerManagement from '@/components/admin/CustomerManagement';
@@ -11,6 +11,8 @@ import OrderManagement from '@/components/admin/OrderManagement';
 import PromotionsManagement from '@/components/admin/PromotionsManagement';
 import { initializeRealtime } from '@/integrations/supabase/setup-realtime';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -20,6 +22,8 @@ const AdminPanel = () => {
     customers: 0,
     posters: 0
   });
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Initialize realtime subscriptions
@@ -61,12 +65,30 @@ const AdminPanel = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage your poster store from here</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-2">Manage your poster store from here</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">Welcome, {user?.email}</span>
+            <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -175,11 +197,59 @@ const AdminPanel = () => {
             <TabsContent value="analytics">
               <Card>
                 <CardHeader>
-                  <CardTitle>Analytics & Reports</CardTitle>
-                  <CardDescription>Detailed analytics and reporting tools</CardDescription>
+                  <CardTitle>Advanced Analytics & Reports</CardTitle>
+                  <CardDescription>Detailed analytics and reporting tools for your poster store</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <DashboardCharts />
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Sales Performance</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <DashboardCharts />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Customer Insights</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span>New Customers This Month</span>
+                              <span className="font-bold">42</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Returning Customers</span>
+                              <span className="font-bold">128</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Average Order Value</span>
+                              <span className="font-bold">₹1,250</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Export Options</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex gap-4">
+                          <Button variant="outline">Export Sales Report</Button>
+                          <Button variant="outline">Export Customer Data</Button>
+                          <Button variant="outline">Export Product Analytics</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
