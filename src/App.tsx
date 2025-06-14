@@ -61,7 +61,6 @@ const App = () => (
                 <Route path="/favorites" element={<LikedPostersPage />} />
                 <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
                 <Route path="/admin" element={<AdminPanel />} />
-                <Route path="/posterzone/adminpannel" element={<AdminPanel />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

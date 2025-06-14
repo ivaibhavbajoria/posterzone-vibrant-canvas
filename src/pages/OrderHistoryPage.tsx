@@ -33,15 +33,20 @@ const OrderHistoryPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
+    console.log('OrderHistoryPage: user state changed:', user);
     if (user) {
       fetchUserOrders();
       setupRealTimeSubscription();
+    } else {
+      setLoading(false);
+      setOrders([]);
     }
   }, [user]);
 
   const setupRealTimeSubscription = () => {
     if (!user) return;
 
+    console.log('Setting up realtime subscription for user:', user.id);
     const channel = supabase
       .channel('user-orders-realtime')
       .on(
@@ -66,6 +71,7 @@ const OrderHistoryPage = () => {
 
   const fetchUserOrders = async () => {
     if (!user) {
+      console.log('No user found, skipping order fetch');
       setLoading(false);
       return;
     }
@@ -183,6 +189,9 @@ const OrderHistoryPage = () => {
         <div className="text-center">
           <h1 className="text-3xl font-bold mb-4">Order History</h1>
           <p className="text-gray-600">Please log in to view your order history.</p>
+          <Button onClick={() => window.location.href = '/auth'} className="mt-4">
+            Go to Login
+          </Button>
         </div>
       </div>
     );
