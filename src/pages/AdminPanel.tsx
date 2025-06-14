@@ -194,62 +194,99 @@ const AdminPanel = () => {
               <PromotionsManagement />
             </TabsContent>
 
-            <TabsContent value="analytics">
+            <TabsContent value="analytics" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Advanced Analytics & Reports</CardTitle>
                   <CardDescription>Detailed analytics and reporting tools for your poster store</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg">Sales Performance</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-64">
-                            <DashboardCharts />
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg">Customer Insights</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex justify-between">
-                              <span>New Customers This Month</span>
-                              <span className="font-bold">42</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Returning Customers</span>
-                              <span className="font-bold">128</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Average Order Value</span>
-                              <span className="font-bold">₹1,250</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                <CardContent className="space-y-8">
+                  {/* Full width charts section */}
+                  <div className="w-full">
+                    <h3 className="text-lg font-semibold mb-4">Sales Performance Overview</h3>
+                    <div className="h-96 w-full">
+                      <DashboardCharts />
                     </div>
+                  </div>
+                  
+                  {/* Customer insights and metrics */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Customer Insights</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">New Customers This Month</span>
+                            <span className="text-xl font-bold text-green-600">42</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Returning Customers</span>
+                            <span className="text-xl font-bold text-blue-600">128</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Average Order Value</span>
+                            <span className="text-xl font-bold text-purple-600">₹1,250</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Customer Retention Rate</span>
+                            <span className="text-xl font-bold text-orange-600">85%</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                     
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Export Options</CardTitle>
+                        <CardTitle className="text-lg">Product Performance</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex gap-4">
-                          <Button variant="outline">Export Sales Report</Button>
-                          <Button variant="outline">Export Customer Data</Button>
-                          <Button variant="outline">Export Product Analytics</Button>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Best Selling Category</span>
+                            <span className="text-xl font-bold text-green-600">Nature</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Top Poster Sales</span>
+                            <span className="text-xl font-bold text-blue-600">245</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Inventory Turnover</span>
+                            <span className="text-xl font-bold text-purple-600">78%</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Low Stock Items</span>
+                            <span className="text-xl font-bold text-red-600">12</span>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
+                  
+                  {/* Export options */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Export & Reports</CardTitle>
+                      <CardDescription>Download detailed reports for your analysis</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          Export Sales Report
+                        </Button>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Export Customer Data
+                        </Button>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <Package className="h-4 w-4" />
+                          Export Product Analytics
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </CardContent>
               </Card>
             </TabsContent>
