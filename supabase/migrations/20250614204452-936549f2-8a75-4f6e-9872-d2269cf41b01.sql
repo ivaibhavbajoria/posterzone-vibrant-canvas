@@ -1,4 +1,5 @@
 
+
 -- Create a table for admin credentials
 CREATE TABLE public.admin_credentials (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -104,3 +105,4 @@ BEGIN
   RETURN stored_hash = public.hash_password(password);
 END;
 $$;
+

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { UserPlus, Settings, Save, Trash2, Eye, EyeOff, Shield, Store, Mail, Phone, MapPin, DollarSign, Percent, Truck, Bell } from 'lucide-react';
+import { UserPlus, Settings, Save, Trash2, Eye, EyeOff, Shield, Store, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -43,14 +44,30 @@ const AdminSettings = () => {
   const [adminCredentials, setAdminCredentials] = useState<AdminCredential[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    fetchAdminCredentials();
-    fetchStoreSettings();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    setDataLoading(true);
+    try {
+      await Promise.all([
+        fetchAdminCredentials(),
+        fetchStoreSettings()
+      ]);
+    } catch (error) {
+      console.error('Error loading admin panel data:', error);
+      toast.error('Failed to load admin panel data');
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   const fetchAdminCredentials = async () => {
     try {
+      console.log('Fetching admin credentials...');
       const { data, error } = await supabase
         .from('admin_credentials')
         .select('id, email, full_name, is_active, created_at')
@@ -58,34 +75,42 @@ const AdminSettings = () => {
 
       if (error) {
         console.error('Error fetching admin credentials:', error);
-        toast.error('Failed to load admin credentials');
+        // Don't show error toast for policy issues, just log
+        if (!error.message.includes('policy')) {
+          toast.error('Failed to load admin credentials');
+        }
         return;
       }
 
+      console.log('Admin credentials loaded:', data);
       setAdminCredentials(data || []);
     } catch (error) {
       console.error('Error fetching admin credentials:', error);
-      toast.error('Failed to load admin credentials');
     }
   };
 
   const fetchStoreSettings = async () => {
     try {
+      console.log('Fetching store settings...');
       const { data, error } = await supabase
         .from('store_settings')
         .select('*')
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching store settings:', error);
-        toast.error('Failed to load store settings');
+        // Don't show error toast for policy issues, just log
+        if (!error.message.includes('policy')) {
+          toast.error('Failed to load store settings');
+        }
         return;
       }
 
+      console.log('Store settings loaded:', data);
       setStoreSettings(data);
     } catch (error) {
       console.error('Error fetching store settings:', error);
-      toast.error('Failed to load store settings');
     }
   };
 
@@ -94,12 +119,27 @@ const AdminSettings = () => {
     setIsLoading(true);
 
     try {
+      console.log('Adding new admin...');
+      
       if (!newAdminEmail || !newAdminPassword) {
-        toast.error('Please fill in all required fields');
+        toast.error('Please fill in email and password');
+        return;
+      }
+
+      if (newAdminPassword.length < 6) {
+        toast.error('Password must be at least 6 characters long');
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newAdminEmail)) {
+        toast.error('Please enter a valid email address');
         return;
       }
 
       // Hash the password using the database function
+      console.log('Hashing password...');
       const { data: hashedPassword, error: hashError } = await supabase
         .rpc('hash_password', { password: newAdminPassword });
 
@@ -109,7 +149,10 @@ const AdminSettings = () => {
         return;
       }
 
+      console.log('Password hashed successfully');
+
       // Insert new admin credentials
+      console.log('Inserting admin credentials...');
       const { error: insertError } = await supabase
         .from('admin_credentials')
         .insert({
@@ -122,20 +165,23 @@ const AdminSettings = () => {
         console.error('Error adding admin:', insertError);
         if (insertError.code === '23505') {
           toast.error('An admin with this email already exists');
+        } else if (insertError.message.includes('policy')) {
+          toast.error('Admin creation temporarily disabled due to policy restrictions');
         } else {
-          toast.error('Failed to add admin');
+          toast.error('Failed to add admin: ' + insertError.message);
         }
         return;
       }
 
+      console.log('Admin added successfully');
       toast.success(`Admin ${newAdminEmail} has been added successfully`);
       setNewAdminEmail('');
       setNewAdminPassword('');
       setNewAdminFullName('');
-      fetchAdminCredentials();
+      await fetchAdminCredentials();
     } catch (error) {
       console.error('Error adding admin:', error);
-      toast.error('Failed to add admin');
+      toast.error('Failed to add admin. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -143,6 +189,7 @@ const AdminSettings = () => {
 
   const handleToggleAdminStatus = async (adminId: string, currentStatus: boolean) => {
     try {
+      console.log('Toggling admin status...');
       const { error } = await supabase
         .from('admin_credentials')
         .update({ is_active: !currentStatus })
@@ -155,7 +202,7 @@ const AdminSettings = () => {
       }
 
       toast.success(`Admin ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-      fetchAdminCredentials();
+      await fetchAdminCredentials();
     } catch (error) {
       console.error('Error updating admin status:', error);
       toast.error('Failed to update admin status');
@@ -168,6 +215,7 @@ const AdminSettings = () => {
     }
 
     try {
+      console.log('Deleting admin...');
       const { error } = await supabase
         .from('admin_credentials')
         .delete()
@@ -180,7 +228,7 @@ const AdminSettings = () => {
       }
 
       toast.success(`Admin ${email} has been deleted successfully`);
-      fetchAdminCredentials();
+      await fetchAdminCredentials();
     } catch (error) {
       console.error('Error deleting admin:', error);
       toast.error('Failed to delete admin');
@@ -188,11 +236,15 @@ const AdminSettings = () => {
   };
 
   const handleSaveStoreSettings = async () => {
-    if (!storeSettings) return;
+    if (!storeSettings) {
+      toast.error('No store settings to save');
+      return;
+    }
     
     setSettingsLoading(true);
 
     try {
+      console.log('Saving store settings...');
       const { error } = await supabase
         .from('store_settings')
         .update({
@@ -207,12 +259,13 @@ const AdminSettings = () => {
           email_notifications: storeSettings.email_notifications,
           sms_notifications: storeSettings.sms_notifications,
           maintenance_mode: storeSettings.maintenance_mode,
+          updated_at: new Date().toISOString()
         })
         .eq('id', storeSettings.id);
 
       if (error) {
         console.error('Error saving store settings:', error);
-        toast.error('Failed to save store settings');
+        toast.error('Failed to save store settings: ' + error.message);
         return;
       }
 
@@ -224,6 +277,17 @@ const AdminSettings = () => {
       setSettingsLoading(false);
     }
   };
+
+  if (dataLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading admin settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -273,10 +337,11 @@ const AdminSettings = () => {
                   <Input
                     id="adminPassword"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter secure password"
+                    placeholder="Enter secure password (min 6 characters)"
                     value={newAdminPassword}
                     onChange={(e) => setNewAdminPassword(e.target.value)}
                     required
+                    minLength={6}
                     className="pr-10"
                   />
                   <Button
@@ -293,6 +358,9 @@ const AdminSettings = () => {
                     )}
                   </Button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Password will be securely hashed and stored in the database
+                </p>
               </div>
               <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
                 {isLoading ? 'Adding Admin...' : 'Add Admin'}
@@ -303,50 +371,53 @@ const AdminSettings = () => {
           {/* Existing Admins List */}
           <div>
             <h3 className="text-lg font-semibold mb-4">Existing Admins</h3>
-            <div className="space-y-3">
-              {adminCredentials.map((admin) => (
-                <div key={admin.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
-                  <div className="flex-1">
-                    <div className="font-medium">{admin.email}</div>
-                    {admin.full_name && (
-                      <div className="text-sm text-gray-600">{admin.full_name}</div>
-                    )}
-                    <div className="text-xs text-gray-500">
-                      Added: {new Date(admin.created_at).toLocaleDateString()}
+            {adminCredentials.length > 0 ? (
+              <div className="space-y-3">
+                {adminCredentials.map((admin) => (
+                  <div key={admin.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
+                    <div className="flex-1">
+                      <div className="font-medium">{admin.email}</div>
+                      {admin.full_name && (
+                        <div className="text-sm text-gray-600">{admin.full_name}</div>
+                      )}
+                      <div className="text-xs text-gray-500">
+                        Added: {new Date(admin.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        admin.is_active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {admin.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleAdminStatus(admin.id, admin.is_active)}
+                      >
+                        {admin.is_active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteAdmin(admin.id, admin.email)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      admin.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {admin.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleAdminStatus(admin.id, admin.is_active)}
-                    >
-                      {admin.is_active ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteAdmin(admin.id, admin.email)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {adminCredentials.length === 0 && (
-                <div className="text-center text-gray-500 py-4">
-                  No admin credentials found
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">
+                <Shield className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p>No admin credentials found</p>
+                <p className="text-sm">Add your first admin above to get started</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -375,6 +446,7 @@ const AdminSettings = () => {
                       id="storeName"
                       value={storeSettings.store_name}
                       onChange={(e) => setStoreSettings({...storeSettings, store_name: e.target.value})}
+                      placeholder="Your Store Name"
                     />
                   </div>
                   <div>
@@ -384,6 +456,7 @@ const AdminSettings = () => {
                       type="email"
                       value={storeSettings.store_email}
                       onChange={(e) => setStoreSettings({...storeSettings, store_email: e.target.value})}
+                      placeholder="contact@yourstore.com"
                     />
                   </div>
                   <div>
@@ -429,10 +502,7 @@ const AdminSettings = () => {
 
               {/* Financial Settings */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Financial Settings
-                </h3>
+                <h3 className="text-lg font-semibold">Financial Settings</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="taxRate">Tax Rate (%)</Label>
@@ -540,11 +610,17 @@ const AdminSettings = () => {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading store settings...</p>
-              </div>
+            <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">
+              <Settings className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p>Store settings not available</p>
+              <p className="text-sm">Please check your permissions or contact support</p>
+              <Button 
+                onClick={fetchStoreSettings} 
+                variant="outline" 
+                className="mt-4"
+              >
+                Retry Loading
+              </Button>
             </div>
           )}
         </CardContent>
