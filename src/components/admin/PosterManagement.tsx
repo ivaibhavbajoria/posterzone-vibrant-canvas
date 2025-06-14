@@ -132,28 +132,11 @@ const PosterManagement = () => {
       
       const fileExt = file.name.split('.').pop();
       const fileName = `poster-${Date.now()}.${fileExt}`;
-      const filePath = `posters/${fileName}`;
+      const filePath = fileName;
 
       console.log('Uploading to path:', filePath);
 
-      // First try to create the bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const posterBucket = buckets?.find(bucket => bucket.name === 'posters');
-      
-      if (!posterBucket) {
-        console.log('Creating posters bucket...');
-        const { error: bucketError } = await supabase.storage.createBucket('posters', {
-          public: true,
-          fileSizeLimit: 10485760, // 10MB
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
-        });
-        
-        if (bucketError) {
-          console.error('Error creating bucket:', bucketError);
-          throw new Error('Failed to create storage bucket');
-        }
-      }
-
+      // Upload directly to the posters bucket
       const { error: uploadError } = await supabase.storage
         .from('posters')
         .upload(filePath, file, {
