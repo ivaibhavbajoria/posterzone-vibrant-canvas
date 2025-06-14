@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Upload, Eye } from 'lucide-react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 // Type definitions
 interface Category {
@@ -44,6 +44,7 @@ interface PosterFormData {
 }
 
 const PosterManagement = () => {
+  const { isAdminLoggedIn } = useAdminAuth();
   const [posters, setPosters] = useState<Poster[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -104,9 +105,13 @@ const PosterManagement = () => {
   };
 
   useEffect(() => {
+    if (!isAdminLoggedIn) {
+      toast.error('Admin authentication required');
+      return;
+    }
     fetchPosters();
     fetchCategories();
-  }, []);
+  }, [isAdminLoggedIn]);
 
   const handleInputChange = (field: keyof PosterFormData, value: any) => {
     setFormData(prev => ({
@@ -129,6 +134,10 @@ const PosterManagement = () => {
   const uploadImage = async (file: File): Promise<string> => {
     try {
       console.log('Starting image upload for file:', file.name);
+      
+      if (!isAdminLoggedIn) {
+        throw new Error('Admin authentication required for image upload');
+      }
       
       const fileExt = file.name.split('.').pop();
       const fileName = `poster-${Date.now()}.${fileExt}`;
@@ -163,6 +172,11 @@ const PosterManagement = () => {
   const handleSubmit = async () => {
     console.log('Starting form submission with data:', formData);
     
+    if (!isAdminLoggedIn) {
+      toast.error('Admin authentication required');
+      return;
+    }
+    
     if (!formData.title || !formData.price || !formData.category) {
       toast.error('Please fill in all required fields');
       return;
@@ -189,6 +203,19 @@ const PosterManagement = () => {
       };
 
       console.log('Submitting poster data:', posterData);
+
+      // Check admin status before attempting database operations
+      const { data: adminCheck, error: adminError } = await supabase.rpc('check_admin_status');
+      console.log('Admin status check:', adminCheck, adminError);
+      
+      if (adminError) {
+        console.error('Admin check error:', adminError);
+        throw new Error('Failed to verify admin status');
+      }
+      
+      if (!adminCheck) {
+        throw new Error('Admin privileges required for this action');
+      }
 
       if (editingPoster) {
         console.log('Updating existing poster with ID:', editingPoster.id);
@@ -287,6 +314,17 @@ const PosterManagement = () => {
     });
     setEditingPoster(null);
   };
+
+  if (!isAdminLoggedIn) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+          <CardDescription>Admin authentication required to manage posters</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <Card>
