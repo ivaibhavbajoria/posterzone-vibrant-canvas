@@ -84,6 +84,20 @@ const PromotionsManagement = () => {
   });
 
   useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user for promotions management:', user);
+      if (!user) {
+        toast.error("Authentication error: You are not logged in.");
+      } else {
+        console.log('Authenticated user email:', user.email);
+        if (user.email !== 'vaibhavbajoria03@gmail.com') {
+          toast.warning("You are not authorized as an admin. Please log in with the admin account.");
+        }
+      }
+    };
+    checkUser();
+
     console.log('PromotionsManagement: Initializing...');
     fetchCoupons();
     fetchBundles();
