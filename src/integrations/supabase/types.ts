@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bundles: {
         Row: {
           created_at: string
@@ -321,6 +354,57 @@ export type Database = {
         }
         Relationships: []
       }
+      store_settings: {
+        Row: {
+          created_at: string
+          currency: string
+          email_notifications: boolean
+          free_shipping_threshold: number
+          id: string
+          maintenance_mode: boolean
+          shipping_cost: number
+          sms_notifications: boolean
+          store_address: string | null
+          store_email: string
+          store_name: string
+          store_phone: string | null
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          email_notifications?: boolean
+          free_shipping_threshold?: number
+          id?: string
+          maintenance_mode?: boolean
+          shipping_cost?: number
+          sms_notifications?: boolean
+          store_address?: string | null
+          store_email?: string
+          store_name?: string
+          store_phone?: string | null
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          email_notifications?: boolean
+          free_shipping_threshold?: number
+          id?: string
+          maintenance_mode?: boolean
+          shipping_cost?: number
+          sms_notifications?: boolean
+          store_address?: string | null
+          store_email?: string
+          store_name?: string
+          store_phone?: string | null
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -328,6 +412,14 @@ export type Database = {
     Functions: {
       check_admin_status: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      verify_admin_credentials: {
+        Args: { email: string; password: string }
         Returns: boolean
       }
     }
