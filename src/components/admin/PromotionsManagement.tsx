@@ -63,6 +63,8 @@ const PromotionsManagement = () => {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchingCoupons, setFetchingCoupons] = useState(true);
+  const [fetchingBundles, setFetchingBundles] = useState(true);
   
   const [couponFormData, setCouponFormData] = useState<CouponFormData>({
     code: '',
@@ -82,27 +84,39 @@ const PromotionsManagement = () => {
   });
 
   useEffect(() => {
+    console.log('PromotionsManagement: Initializing...');
     fetchCoupons();
     fetchBundles();
 
     // Set up real-time subscriptions
     const couponsChannel = supabase
-      .channel('coupons_changes')
+      .channel('coupons_realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'coupons' }, 
-        () => fetchCoupons()
+        (payload) => {
+          console.log('Coupons realtime update:', payload);
+          fetchCoupons();
+        }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Coupons channel status:', status);
+      });
 
     const bundlesChannel = supabase
-      .channel('bundles_changes')
+      .channel('bundles_realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'bundles' }, 
-        () => fetchBundles()
+        (payload) => {
+          console.log('Bundles realtime update:', payload);
+          fetchBundles();
+        }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Bundles channel status:', status);
+      });
 
     return () => {
+      console.log('PromotionsManagement: Cleaning up channels...');
       supabase.removeChannel(couponsChannel);
       supabase.removeChannel(bundlesChannel);
     };
@@ -110,6 +124,9 @@ const PromotionsManagement = () => {
 
   const fetchCoupons = async () => {
     try {
+      setFetchingCoupons(true);
+      console.log('Fetching coupons...');
+      
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
@@ -117,9 +134,11 @@ const PromotionsManagement = () => {
 
       if (error) {
         console.error('Error fetching coupons:', error);
-        toast.error('Failed to fetch coupons');
+        toast.error(`Failed to fetch coupons: ${error.message}`);
         return;
       }
+      
+      console.log('Coupons fetched successfully:', data);
       
       // Type assertion to ensure proper typing
       const typedCoupons = (data || []).map(coupon => ({
@@ -128,14 +147,19 @@ const PromotionsManagement = () => {
       }));
       
       setCoupons(typedCoupons);
-    } catch (error) {
-      console.error('Error fetching coupons:', error);
-      toast.error('Failed to fetch coupons');
+    } catch (error: any) {
+      console.error('Unexpected error fetching coupons:', error);
+      toast.error(`Unexpected error: ${error.message}`);
+    } finally {
+      setFetchingCoupons(false);
     }
   };
 
   const fetchBundles = async () => {
     try {
+      setFetchingBundles(true);
+      console.log('Fetching bundles...');
+      
       const { data, error } = await supabase
         .from('bundles')
         .select('*')
@@ -143,13 +167,17 @@ const PromotionsManagement = () => {
 
       if (error) {
         console.error('Error fetching bundles:', error);
-        toast.error('Failed to fetch bundles');
+        toast.error(`Failed to fetch bundles: ${error.message}`);
         return;
       }
+      
+      console.log('Bundles fetched successfully:', data);
       setBundles(data || []);
-    } catch (error) {
-      console.error('Error fetching bundles:', error);
-      toast.error('Failed to fetch bundles');
+    } catch (error: any) {
+      console.error('Unexpected error fetching bundles:', error);
+      toast.error(`Unexpected error: ${error.message}`);
+    } finally {
+      setFetchingBundles(false);
     }
   };
 
@@ -185,6 +213,8 @@ const PromotionsManagement = () => {
         is_active: couponFormData.is_active,
         current_uses: 0
       };
+
+      console.log('Submitting coupon data:', couponData);
 
       if (editingCoupon) {
         const { error } = await supabase
@@ -233,6 +263,8 @@ const PromotionsManagement = () => {
         discount_percentage: parseFloat(bundleFormData.discount_percentage),
         is_active: bundleFormData.is_active
       };
+
+      console.log('Submitting bundle data:', bundleData);
 
       if (editingBundle) {
         const { error } = await supabase
@@ -303,9 +335,9 @@ const PromotionsManagement = () => {
       
       if (error) throw error;
       toast.success('Coupon deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting coupon:', error);
-      toast.error('Failed to delete coupon');
+      toast.error(`Failed to delete coupon: ${error.message}`);
     }
   };
 
@@ -320,9 +352,9 @@ const PromotionsManagement = () => {
       
       if (error) throw error;
       toast.success('Bundle deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting bundle:', error);
-      toast.error('Failed to delete bundle');
+      toast.error(`Failed to delete bundle: ${error.message}`);
     }
   };
 
@@ -489,59 +521,73 @@ const PromotionsManagement = () => {
                 </Dialog>
               </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead>Min Order</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {coupons.map((coupon) => (
-                    <TableRow key={coupon.id}>
-                      <TableCell className="font-mono font-medium">{coupon.code}</TableCell>
-                      <TableCell>
-                        {coupon.type === 'percentage' ? 'Percentage' : 'Fixed Amount'}
-                      </TableCell>
-                      <TableCell>
-                        {coupon.type === 'percentage' ? `${coupon.value}%` : `₹${coupon.value}`}
-                      </TableCell>
-                      <TableCell>₹{coupon.min_order_amount}</TableCell>
-                      <TableCell>
-                        {coupon.current_uses}/{coupon.max_uses || '∞'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={coupon.is_active ? 'default' : 'secondary'}>
-                          {coupon.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditCoupon(coupon)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteCoupon(coupon.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              {fetchingCoupons ? (
+                <div className="text-center py-8">
+                  <p>Loading coupons...</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Min Order</TableHead>
+                      <TableHead>Usage</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {coupons.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                          No coupons found. Create your first coupon!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      coupons.map((coupon) => (
+                        <TableRow key={coupon.id}>
+                          <TableCell className="font-mono font-medium">{coupon.code}</TableCell>
+                          <TableCell>
+                            {coupon.type === 'percentage' ? 'Percentage' : 'Fixed Amount'}
+                          </TableCell>
+                          <TableCell>
+                            {coupon.type === 'percentage' ? `${coupon.value}%` : `₹${coupon.value}`}
+                          </TableCell>
+                          <TableCell>₹{coupon.min_order_amount}</TableCell>
+                          <TableCell>
+                            {coupon.current_uses}/{coupon.max_uses || '∞'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={coupon.is_active ? 'default' : 'secondary'}>
+                              {coupon.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditCoupon(coupon)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteCoupon(coupon.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </TabsContent>
 
             <TabsContent value="bundles" className="mt-6">
@@ -623,49 +669,63 @@ const PromotionsManagement = () => {
                 </Dialog>
               </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Bundle Name</TableHead>
-                    <TableHead>Min Quantity</TableHead>
-                    <TableHead>Discount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bundles.map((bundle) => (
-                    <TableRow key={bundle.id}>
-                      <TableCell className="font-medium">{bundle.name}</TableCell>
-                      <TableCell>{bundle.min_quantity} items</TableCell>
-                      <TableCell>{bundle.discount_percentage}% off</TableCell>
-                      <TableCell>
-                        <Badge variant={bundle.is_active ? 'default' : 'secondary'}>
-                          {bundle.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditBundle(bundle)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteBundle(bundle.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              {fetchingBundles ? (
+                <div className="text-center py-8">
+                  <p>Loading bundles...</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Bundle Name</TableHead>
+                      <TableHead>Min Quantity</TableHead>
+                      <TableHead>Discount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {bundles.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          No bundles found. Create your first bundle!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      bundles.map((bundle) => (
+                        <TableRow key={bundle.id}>
+                          <TableCell className="font-medium">{bundle.name}</TableCell>
+                          <TableCell>{bundle.min_quantity} items</TableCell>
+                          <TableCell>{bundle.discount_percentage}% off</TableCell>
+                          <TableCell>
+                            <Badge variant={bundle.is_active ? 'default' : 'secondary'}>
+                              {bundle.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditBundle(bundle)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteBundle(bundle.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
