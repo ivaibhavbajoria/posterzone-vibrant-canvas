@@ -152,7 +152,8 @@ const PosterManagement = () => {
         category: formData.category,
         is_trending: formData.is_trending,
         is_best_seller: formData.is_best_seller,
-        image_url: imageUrl
+        image_url: imageUrl,
+        updated_at: new Date().toISOString()
       };
 
       if (editingPoster) {
@@ -418,6 +419,12 @@ const PosterManagement = () => {
             ))}
           </TableBody>
         </Table>
+        
+        {posters.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No posters found. Add your first poster to get started.
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -10,24 +10,72 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User, Settings, History } from 'lucide-react';
 
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  phone: string | null;
+  is_admin: boolean;
+}
+
 const UserProfilePage = () => {
-  const { user, profile } = useAuth();
-  const [profileData, setProfileData] = useState({
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [formData, setFormData] = useState({
     full_name: '',
     username: '',
-    avatar_url: ''
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    phone: ''
   });
-  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    if (profile) {
-      setProfileData({
-        full_name: profile.full_name || '',
-        username: profile.username || '',
-        avatar_url: profile.avatar_url || ''
-      });
+    if (user) {
+      fetchProfile();
     }
-  }, [profile]);
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        toast.error('Failed to load profile');
+        return;
+      }
+
+      setProfile(data);
+      setFormData({
+        full_name: data.full_name || '',
+        username: data.username || '',
+        address: data.address || '',
+        city: data.city || '',
+        state: data.state || '',
+        zip_code: data.zip_code || '',
+        phone: data.phone || ''
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to load profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,12 +85,22 @@ const UserProfilePage = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(profileData)
+        .update({
+          full_name: formData.full_name,
+          username: formData.username,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zip_code: formData.zip_code,
+          phone: formData.phone,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id);
 
       if (error) throw error;
 
       toast.success('Profile updated successfully!');
+      fetchProfile(); // Refresh profile data
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile. Please try again.');
@@ -51,19 +109,25 @@ const UserProfilePage = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData({
-          ...profileData,
-          avatar_url: reader.result as string
-        });
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-posterzone-orange mx-auto mb-4"></div>
+            <p>Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -92,40 +156,13 @@ const UserProfilePage = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                    {profileData.avatar_url ? (
-                      <img 
-                        src={profileData.avatar_url} 
-                        alt="Profile" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-8 h-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="avatar">Profile Picture</Label>
-                    <Input
-                      id="avatar"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="full_name">Full Name</Label>
                     <Input
                       id="full_name"
-                      value={profileData.full_name}
-                      onChange={(e) => setProfileData({
-                        ...profileData,
-                        full_name: e.target.value
-                      })}
+                      value={formData.full_name}
+                      onChange={(e) => handleInputChange('full_name', e.target.value)}
                       placeholder="Enter your full name"
                     />
                   </div>
@@ -133,11 +170,8 @@ const UserProfilePage = () => {
                     <Label htmlFor="username">Username</Label>
                     <Input
                       id="username"
-                      value={profileData.username}
-                      onChange={(e) => setProfileData({
-                        ...profileData,
-                        username: e.target.value
-                      })}
+                      value={formData.username}
+                      onChange={(e) => handleInputChange('username', e.target.value)}
                       placeholder="Enter your username"
                     />
                   </div>
@@ -154,6 +188,56 @@ const UserProfilePage = () => {
                   <p className="text-sm text-gray-600 mt-1">
                     Email cannot be changed from here
                   </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    placeholder="Enter your address"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      placeholder="Enter your city"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
+                      placeholder="Enter your state"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="zip_code">ZIP Code</Label>
+                    <Input
+                      id="zip_code"
+                      value={formData.zip_code}
+                      onChange={(e) => handleInputChange('zip_code', e.target.value)}
+                      placeholder="Enter your ZIP code"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    placeholder="Enter your phone number"
+                  />
                 </div>
 
                 <Button type="submit" disabled={isUpdating}>
@@ -187,6 +271,22 @@ const UserProfilePage = () => {
               <CardTitle>Account Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {profile?.is_admin && (
+                <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                  <h4 className="font-semibold mb-2 text-blue-800">Admin Access</h4>
+                  <p className="text-blue-600 mb-4">
+                    You have administrator privileges. Access the admin panel to manage the store.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.href = '/admin'}
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  >
+                    Go to Admin Panel
+                  </Button>
+                </div>
+              )}
+
               <div className="border rounded-lg p-4">
                 <h4 className="font-semibold mb-2">Change Password</h4>
                 <p className="text-gray-600 mb-4">
