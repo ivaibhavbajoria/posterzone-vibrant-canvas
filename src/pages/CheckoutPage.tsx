@@ -129,13 +129,37 @@ const CheckoutPage = () => {
 
       if (orderError) throw orderError;
 
-      // Create order items
-      const orderItems = cartItems.map(item => ({
-        order_id: order.id,
-        poster_id: String(item.id),
-        quantity: item.quantity,
-        price: item.price
-      }));
+      // First, get all poster UUIDs from the database
+      const posterIds = cartItems.map(item => item.id);
+      const { data: postersData, error: postersError } = await supabase
+        .from('posters')
+        .select('id, title')
+        .in('title', cartItems.map(item => item.title));
+
+      if (postersError) {
+        console.error('Error fetching poster UUIDs:', postersError);
+        throw new Error('Could not find poster information');
+      }
+
+      // Create a mapping from title to UUID
+      const titleToUuidMap = new Map();
+      postersData.forEach(poster => {
+        titleToUuidMap.set(poster.title, poster.id);
+      });
+
+      // Create order items with proper UUIDs
+      const orderItems = cartItems.map(item => {
+        const posterUuid = titleToUuidMap.get(item.title);
+        if (!posterUuid) {
+          throw new Error(`Could not find poster UUID for: ${item.title}`);
+        }
+        return {
+          order_id: order.id,
+          poster_id: posterUuid,
+          quantity: item.quantity,
+          price: item.price
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
