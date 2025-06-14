@@ -135,10 +135,6 @@ const PosterManagement = () => {
     try {
       console.log('Starting image upload for file:', file.name);
       
-      if (!isAdminLoggedIn) {
-        throw new Error('Admin authentication required for image upload');
-      }
-      
       const fileExt = file.name.split('.').pop();
       const fileName = `poster-${Date.now()}.${fileExt}`;
       const filePath = fileName;
@@ -203,19 +199,6 @@ const PosterManagement = () => {
       };
 
       console.log('Submitting poster data:', posterData);
-
-      // Check admin status before attempting database operations
-      const { data: adminCheck, error: adminError } = await supabase.rpc('check_admin_status');
-      console.log('Admin status check:', adminCheck, adminError);
-      
-      if (adminError) {
-        console.error('Admin check error:', adminError);
-        throw new Error('Failed to verify admin status');
-      }
-      
-      if (!adminCheck) {
-        throw new Error('Admin privileges required for this action');
-      }
 
       if (editingPoster) {
         console.log('Updating existing poster with ID:', editingPoster.id);
