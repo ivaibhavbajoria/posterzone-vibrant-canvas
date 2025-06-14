@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift, LogOut } from 'lucide-react';
 import DashboardCharts from '@/components/DashboardCharts';
+import AnalyticsCharts from '@/components/AnalyticsCharts';
 import PosterManagement from '@/components/admin/PosterManagement';
 import CustomerManagement from '@/components/admin/CustomerManagement';
 import OrderManagement from '@/components/admin/OrderManagement';
@@ -201,15 +201,12 @@ const AdminPanel = () => {
                   <CardDescription>Detailed analytics and reporting tools for your poster store</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
-                  {/* Full width charts section */}
+                  {/* Analytics charts section */}
                   <div className="w-full">
-                    <h3 className="text-lg font-semibold mb-4">Sales Performance Overview</h3>
-                    <div className="h-96 w-full">
-                      <DashboardCharts />
-                    </div>
+                    <h3 className="text-lg font-semibold mb-6">Sales Performance Overview</h3>
+                    <AnalyticsCharts />
                   </div>
                   
-                  {/* Customer insights and metrics */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
@@ -264,7 +261,6 @@ const AdminPanel = () => {
                     </Card>
                   </div>
                   
-                  {/* Export options */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Export & Reports</CardTitle>
