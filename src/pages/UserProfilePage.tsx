@@ -24,8 +24,7 @@ interface UserProfile {
 }
 
 const UserProfilePage = () => {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { user, profile, isAdmin } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [formData, setFormData] = useState({
@@ -39,71 +38,107 @@ const UserProfilePage = () => {
   });
 
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        toast.error('Failed to load profile');
-        return;
-      }
-
-      setProfile(data);
+    if (profile) {
+      console.log('Profile loaded:', profile);
       setFormData({
-        full_name: data.full_name || '',
-        username: data.username || '',
-        address: data.address || '',
-        city: data.city || '',
-        state: data.state || '',
-        zip_code: data.zip_code || '',
-        phone: data.phone || ''
+        full_name: profile.full_name || '',
+        username: profile.username || '',
+        address: profile.address || '',
+        city: profile.city || '',
+        state: profile.state || '',
+        zip_code: profile.zip_code || '',
+        phone: profile.phone || ''
       });
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Failed to load profile');
-    } finally {
+      setIsLoading(false);
+    } else if (user) {
+      console.log('User exists but no profile, creating default form data');
+      setFormData({
+        full_name: user.user_metadata?.full_name || '',
+        username: user.email?.split('@')[0] || '',
+        address: '',
+        city: '',
+        state: '',
+        zip_code: '',
+        phone: ''
+      });
       setIsLoading(false);
     }
-  };
+  }, [profile, user]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      toast.error('You must be logged in to update your profile');
+      return;
+    }
 
+    console.log('Updating profile with data:', formData);
     setIsUpdating(true);
+    
     try {
-      const { error } = await supabase
+      const updateData = {
+        full_name: formData.full_name || null,
+        username: formData.username || null,
+        address: formData.address || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        zip_code: formData.zip_code || null,
+        phone: formData.phone || null,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Sending update to Supabase:', updateData);
+
+      const { data, error } = await supabase
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          username: formData.username,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zip_code: formData.zip_code,
-          phone: formData.phone,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+        .update(updateData)
+        .eq('id', user.id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
+      console.log('Profile updated successfully:', data);
       toast.success('Profile updated successfully!');
-      fetchProfile(); // Refresh profile data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile. Please try again.');
+      
+      // Check if it's a profile not found error and try to create one
+      if (error.code === 'PGRST116') {
+        console.log('Profile not found, creating new profile...');
+        try {
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              full_name: formData.full_name || null,
+              username: formData.username || null,
+              address: formData.address || null,
+              city: formData.city || null,
+              state: formData.state || null,
+              zip_code: formData.zip_code || null,
+              phone: formData.phone || null
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating profile:', createError);
+            throw createError;
+          }
+
+          console.log('Profile created successfully:', newProfile);
+          toast.success('Profile created successfully!');
+        } catch (createError: any) {
+          console.error('Failed to create profile:', createError);
+          toast.error(`Failed to create profile: ${createError.message}`);
+        }
+      } else {
+        toast.error(`Failed to update profile: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -271,7 +306,7 @@ const UserProfilePage = () => {
               <CardTitle>Account Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {profile?.is_admin && (
+              {isAdmin && (
                 <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
                   <h4 className="font-semibold mb-2 text-blue-800">Admin Access</h4>
                   <p className="text-blue-600 mb-4">
