@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,8 +38,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Admin credentials
-  const ADMIN_EMAIL = 'vaibhavbajoria03@gmail.com';
+  // Admin credentials - updated email
+  const ADMIN_EMAIL = 'vaibhavbajoria030@gmail.com';
   const ADMIN_PASSWORD = 'test001';
 
   useEffect(() => {

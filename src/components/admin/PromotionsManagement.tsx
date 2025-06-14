@@ -91,7 +91,7 @@ const PromotionsManagement = () => {
         toast.error("Authentication error: You are not logged in.");
       } else {
         console.log('Authenticated user email:', user.email);
-        if (user.email !== 'vaibhavbajoria03@gmail.com') {
+        if (user.email !== 'vaibhavbajoria030@gmail.com') {
           toast.warning("You are not authorized as an admin. Please log in with the admin account.");
         }
       }
