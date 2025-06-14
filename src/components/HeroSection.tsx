@@ -47,7 +47,7 @@ const HeroSection = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
+              <div className="space-y-8">
                 <div className="aspect-[3/4] rounded-lg overflow-hidden shadow-lg transform translate-y-6">
                   <img 
                     src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5" 
@@ -63,7 +63,7 @@ const HeroSection = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-4 transform translate-y-10">
+              <div className="space-y-8 transform translate-y-10">
                 <div className="aspect-[3/4] rounded-lg overflow-hidden shadow-lg">
                   <img 
                     src="https://images.unsplash.com/photo-1488590528505-98d2b5aba04b" 
