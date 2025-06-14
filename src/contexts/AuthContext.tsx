@@ -39,6 +39,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Admin credentials
+  const ADMIN_EMAIL = 'vaibhavbajoria03@gmail.com';
+  const ADMIN_PASSWORD = 'test001';
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -102,6 +106,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Check if trying to access admin panel with wrong credentials
+      if (window.location.pathname === '/admin' || window.location.hash === '#/admin') {
+        if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+          toast.error("Invalid admin credentials. Only authorized personnel can access the admin panel.");
+          throw new Error("Invalid admin credentials");
+        }
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -110,6 +122,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         toast.error(`Login failed: ${error.message}`);
         throw error;
+      }
+
+      // For admin login, ensure user gets admin privileges
+      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+        // Update profile to ensure admin status
+        setTimeout(async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from('profiles')
+              .upsert({ 
+                id: user.id, 
+                is_admin: true,
+                full_name: user.user_metadata?.full_name || 'Admin',
+                updated_at: new Date().toISOString()
+              });
+          }
+        }, 100);
       }
 
       toast.success("Login successful! Welcome back!");

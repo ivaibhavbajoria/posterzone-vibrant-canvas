@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, ShoppingCart } from "lucide-react";
@@ -16,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UserProfile {
   id: string;
@@ -33,10 +33,10 @@ interface UserProfile {
 const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { toast } = useToast();
+  const { user, profile } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   const [formData, setFormData] = useState({
@@ -51,42 +51,35 @@ const CheckoutPage = () => {
   });
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          setUserProfile(profile);
-          // Pre-fill form with profile data if available
-          const nameParts = profile.full_name?.split(' ') || [];
-          setFormData({
-            firstName: nameParts[0] || "",
-            lastName: nameParts.slice(1).join(' ') || "",
-            email: user.email || "",
-            address: profile.address || "",
-            city: profile.city || "",
-            state: profile.state || "",
-            zipCode: profile.zip_code || "",
-            phone: profile.phone || "",
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    } finally {
+    if (profile) {
+      // Pre-fill form with profile data if available
+      const nameParts = profile.full_name?.split(' ') || [];
+      setFormData({
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(' ') || "",
+        email: user?.email || "",
+        address: profile.address || "",
+        city: profile.city || "",
+        state: profile.state || "",
+        zipCode: profile.zip_code || "",
+        phone: profile.phone || "",
+      });
+      setIsLoadingProfile(false);
+    } else if (user) {
+      // If no profile but user exists, set basic info
+      setFormData({
+        firstName: user.user_metadata?.full_name?.split(' ')[0] || "",
+        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || "",
+        email: user.email || "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        phone: "",
+      });
       setIsLoadingProfile(false);
     }
-  };
+  }, [profile, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -252,7 +245,7 @@ const CheckoutPage = () => {
   }
 
   // Check if user has complete profile information
-  const hasCompleteProfile = userProfile && 
+  const hasCompleteProfile = profile && 
     formData.firstName && formData.lastName && formData.address && 
     formData.city && formData.state && formData.zipCode;
 
@@ -270,7 +263,35 @@ const CheckoutPage = () => {
             {/* Checkout Form */}
             <div className="lg:col-span-2">
               <form onSubmit={handleSubmit}>
-                {!hasCompleteProfile && (
+                {hasCompleteProfile ? (
+                  <Card className="mb-8">
+                    <CardHeader>
+                      <CardTitle>Shipping Information</CardTitle>
+                      <CardDescription>Using saved profile information</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
+                        <p><strong>Email:</strong> {formData.email}</p>
+                        <p><strong>Address:</strong> {formData.address}</p>
+                        <p><strong>City:</strong> {formData.city}, {formData.state} {formData.zipCode}</p>
+                        {formData.phone && <p><strong>Phone:</strong> {formData.phone}</p>}
+                      </div>
+                      <div className="mt-4">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            // Allow editing by showing the form
+                            setFormData(prev => ({ ...prev }));
+                          }}
+                        >
+                          Edit Address
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
                   <Card className="mb-8">
                     <CardHeader>
                       <CardTitle>Shipping Information</CardTitle>
@@ -358,24 +379,6 @@ const CheckoutPage = () => {
                           onChange={handleInputChange}
                           required
                         />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {hasCompleteProfile && (
-                  <Card className="mb-8">
-                    <CardHeader>
-                      <CardTitle>Shipping Information</CardTitle>
-                      <CardDescription>Using saved profile information</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
-                        <p><strong>Email:</strong> {formData.email}</p>
-                        <p><strong>Address:</strong> {formData.address}</p>
-                        <p><strong>City:</strong> {formData.city}, {formData.state} {formData.zipCode}</p>
-                        {formData.phone && <p><strong>Phone:</strong> {formData.phone}</p>}
                       </div>
                     </CardContent>
                   </Card>
