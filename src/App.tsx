@@ -20,6 +20,7 @@ import LikedPostersPage from "./pages/LikedPostersPage";
 import PosterDetailsPage from "./pages/PosterDetailsPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
 import AdminPanel from "./pages/AdminPanel";
+import AdminAuthPage from "./pages/AdminAuthPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { CartProvider } from "./contexts/CartContext";
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/favorites" element={<LikedPostersPage />} />
                 <Route path="/poster/:posterId" element={<PosterDetailsPage />} />
                 <Route path="/admin" element={<AdminPanel />} />
+                <Route path="/admin/auth" element={<AdminAuthPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

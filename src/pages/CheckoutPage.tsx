@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart, Tag, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -39,6 +39,9 @@ const CheckoutPage = () => {
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [couponCode, setCouponCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [appliedCoupon, setAppliedCoupon] = useState("");
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -50,6 +53,24 @@ const CheckoutPage = () => {
     zipCode: "",
     phone: "",
   });
+
+  // Bundle offers data
+  const bundleOffers = [
+    {
+      id: 1,
+      title: "Buy 3 Get 1 Free",
+      description: "Add 4 posters to your cart and get the cheapest one free",
+      applicable: cartItems.length >= 3,
+      savings: cartItems.length >= 4 ? Math.min(...cartItems.map(item => item.price)) : 0
+    },
+    {
+      id: 2,
+      title: "Spend ₹2000+ Get 15% Off",
+      description: "Get 15% discount on orders above ₹2000",
+      applicable: getCartTotal() >= 2000,
+      savings: getCartTotal() >= 2000 ? getCartTotal() * 0.15 : 0
+    }
+  ];
 
   useEffect(() => {
     if (profile) {
@@ -87,6 +108,43 @@ const CheckoutPage = () => {
     setFormData({
       ...formData,
       [name]: value,
+    });
+  };
+
+  const applyCoupon = () => {
+    // Sample coupon codes
+    const coupons = {
+      'SAVE10': 0.10,
+      'WELCOME20': 0.20,
+      'FIRST15': 0.15,
+      'POSTER25': 0.25
+    };
+
+    const couponDiscount = coupons[couponCode.toUpperCase() as keyof typeof coupons];
+    
+    if (couponDiscount) {
+      setDiscount(couponDiscount);
+      setAppliedCoupon(couponCode.toUpperCase());
+      toast({
+        title: "Coupon applied!",
+        description: `You saved ${(couponDiscount * 100)}% on your order`,
+      });
+    } else {
+      toast({
+        title: "Invalid coupon",
+        description: "Please check your coupon code and try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeCoupon = () => {
+    setDiscount(0);
+    setAppliedCoupon("");
+    setCouponCode("");
+    toast({
+      title: "Coupon removed",
+      description: "Coupon discount has been removed from your order",
     });
   };
 
@@ -208,9 +266,12 @@ const CheckoutPage = () => {
 
   // Calculate totals
   const subtotal = getCartTotal();
-  const shipping = 4.99;
-  const tax = subtotal * 0.08; // Assuming 8% tax
-  const total = subtotal + shipping + tax;
+  const bundleDiscount = bundleOffers.reduce((total, offer) => total + (offer.applicable ? offer.savings : 0), 0);
+  const couponDiscount = subtotal * discount;
+  const discountedSubtotal = subtotal - bundleDiscount - couponDiscount;
+  const shipping = discountedSubtotal > 1500 ? 0 : 4.99;
+  const tax = discountedSubtotal * 0.08;
+  const total = discountedSubtotal + shipping + tax;
 
   // Check if cart is empty
   const isCartEmpty = cartItems.length === 0 && !checkoutComplete;
@@ -304,6 +365,82 @@ const CheckoutPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Checkout Form */}
             <div className="lg:col-span-2">
+              {/* Bundle Offers */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gift className="h-5 w-5" />
+                    Bundle Offers
+                  </CardTitle>
+                  <CardDescription>Special deals available for your order</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {bundleOffers.map((offer) => (
+                    <div 
+                      key={offer.id} 
+                      className={`p-4 rounded-lg border ${offer.applicable ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className={`font-medium ${offer.applicable ? 'text-green-800' : 'text-gray-600'}`}>
+                            {offer.title}
+                          </h4>
+                          <p className={`text-sm ${offer.applicable ? 'text-green-600' : 'text-gray-500'}`}>
+                            {offer.description}
+                          </p>
+                        </div>
+                        {offer.applicable && offer.savings > 0 && (
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
+                            Save ₹{offer.savings.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Coupon Code */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tag className="h-5 w-5" />
+                    Coupon Code
+                  </CardTitle>
+                  <CardDescription>Have a coupon? Apply it here</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div>
+                        <span className="font-medium text-green-800">Coupon Applied: {appliedCoupon}</span>
+                        <p className="text-sm text-green-600">You saved {(discount * 100)}% on your order</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={removeCoupon}>
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button onClick={applyCoupon} disabled={!couponCode}>
+                        Apply
+                      </Button>
+                    </div>
+                  )}
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-500">
+                      Available codes: SAVE10, WELCOME20, FIRST15, POSTER25
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
               <form onSubmit={handleSubmit}>
                 {hasCompleteProfile ? (
                   <Card className="mb-8">
@@ -476,18 +613,45 @@ const CheckoutPage = () => {
                       <span className="text-gray-600">Subtotal</span>
                       <span>₹{subtotal.toFixed(2)}</span>
                     </div>
+                    
+                    {bundleDiscount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Bundle Discount</span>
+                        <span>-₹{bundleDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Coupon Discount ({appliedCoupon})</span>
+                        <span>-₹{couponDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipping</span>
-                      <span>₹{shipping.toFixed(2)}</span>
+                      <span>{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
                     </div>
+                    
+                    {shipping === 0 && (
+                      <p className="text-xs text-green-600">Free shipping on orders over ₹1500!</p>
+                    )}
+                    
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tax (estimated)</span>
                       <span>₹{tax.toFixed(2)}</span>
                     </div>
+                    
                     <div className="flex justify-between font-bold text-lg pt-2 border-t">
                       <span>Total</span>
                       <span>₹{total.toFixed(2)}</span>
                     </div>
+                    
+                    {(bundleDiscount > 0 || couponDiscount > 0) && (
+                      <div className="text-sm text-green-600 pt-2">
+                        Total savings: ₹{(bundleDiscount + couponDiscount).toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

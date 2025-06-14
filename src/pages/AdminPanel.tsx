@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift, LogOut } from 'lucide-react';
+import { Users, Package, ShoppingCart, TrendingUp, BarChart3, Gift, LogOut, Settings, UserPlus } from 'lucide-react';
 import DashboardCharts from '@/components/DashboardCharts';
 import AnalyticsCharts from '@/components/AnalyticsCharts';
 import PosterManagement from '@/components/admin/PosterManagement';
 import CustomerManagement from '@/components/admin/CustomerManagement';
 import OrderManagement from '@/components/admin/OrderManagement';
 import PromotionsManagement from '@/components/admin/PromotionsManagement';
+import AdminSettings from '@/components/admin/AdminSettings';
 import { initializeRealtime } from '@/integrations/supabase/setup-realtime';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,16 +24,22 @@ const AdminPanel = () => {
     customers: 0,
     posters: 0
   });
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if user is admin, if not redirect
+    if (!isAdmin && user) {
+      navigate('/');
+      return;
+    }
+
     // Initialize realtime subscriptions
     initializeRealtime();
     
     // Fetch dashboard stats
     fetchDashboardStats();
-  }, []);
+  }, [isAdmin, user, navigate]);
   
   const fetchDashboardStats = async () => {
     try {
@@ -74,6 +82,25 @@ const AdminPanel = () => {
     }
   };
 
+  // If user is not admin, show access denied
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center text-red-600">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="mb-4">You don't have permission to access the admin panel.</p>
+            <Button onClick={() => navigate('/')} className="w-full">
+              Return to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -92,7 +119,7 @@ const AdminPanel = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -116,6 +143,10 @@ const AdminPanel = () => {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
             </TabsTrigger>
           </TabsList>
 
@@ -201,7 +232,6 @@ const AdminPanel = () => {
                   <CardDescription>Detailed analytics and reporting tools for your poster store</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
-                  {/* Analytics charts section */}
                   <div className="w-full">
                     <h3 className="text-lg font-semibold mb-6">Sales Performance Overview</h3>
                     <AnalyticsCharts />
@@ -285,6 +315,10 @@ const AdminPanel = () => {
                   </Card>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="settings">
+              <AdminSettings />
             </TabsContent>
           </div>
         </Tabs>
