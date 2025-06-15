@@ -1,11 +1,12 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Image } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const CollagePacks = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [collagePacks, setCollagePacks] = useState([
     {
       id: 1,
@@ -65,11 +66,15 @@ const CollagePacks = () => {
     },
   ]);
 
-  const addToCart = (collageTitle: string) => {
+  const handleAddToCart = (collageTitle: string) => {
     toast({
       title: "Added to cart!",
       description: `${collageTitle} has been added to your cart.`,
     });
+  };
+
+  const goToDetails = (id: number) => {
+    navigate(`/collage-pack/${id}`);
   };
 
   return (
@@ -99,14 +104,15 @@ const CollagePacks = () => {
                   <img 
                     src={collage.image} 
                     alt={collage.title} 
-                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                    onClick={() => goToDetails(collage.id)}
                   />
                   
                   {/* Quick action overlay */}
                   <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
                       className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
-                      onClick={() => addToCart(collage.title)}
+                      onClick={() => handleAddToCart(collage.title)}
                     >
                       Add to Cart
                     </button>
@@ -118,7 +124,10 @@ const CollagePacks = () => {
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer">
+                  <h3 
+                    className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer"
+                    onClick={() => goToDetails(collage.id)}
+                  >
                     {collage.title}
                   </h3>
                   <p className="text-posterzone-blue font-semibold">${collage.price.toFixed(2)}</p>

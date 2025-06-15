@@ -1,9 +1,9 @@
-
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { Image } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 type CollagePacksSectionProps = {
   onAddToCart: (poster: any) => void;
@@ -11,6 +11,7 @@ type CollagePacksSectionProps = {
 
 const CollagePacksSection = ({ onAddToCart }: CollagePacksSectionProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const collagePacks = [
     {
@@ -56,6 +57,10 @@ const CollagePacksSection = ({ onAddToCart }: CollagePacksSectionProps) => {
     });
   };
 
+  const goToDetails = (id: number) => {
+    navigate(`/collage-pack/${id}`);
+  };
+
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
@@ -85,7 +90,8 @@ const CollagePacksSection = ({ onAddToCart }: CollagePacksSectionProps) => {
                   <img 
                     src={collage.image} 
                     alt={collage.title} 
-                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                    onClick={() => goToDetails(collage.id)}
                   />
                   
                   {/* Quick action overlay */}
@@ -104,7 +110,10 @@ const CollagePacksSection = ({ onAddToCart }: CollagePacksSectionProps) => {
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer">
+                  <h3 
+                    className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer"
+                    onClick={() => goToDetails(collage.id)}
+                  >
                     {collage.title}
                   </h3>
                   <p className="text-posterzone-blue font-semibold">${collage.price.toFixed(2)}</p>

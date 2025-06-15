@@ -1,4 +1,3 @@
-
 import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import CustomPoster from "./pages/CustomPoster";
 import Trending from "./pages/Trending";
 import BestSellers from "./pages/BestSellers";
 import CollagePacks from "./pages/CollagePacks";
+import CollagePackDetailsPage from "./pages/CollagePackDetailsPage";
 import SurpriseMePage from "./pages/SurpriseMePage";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
@@ -54,6 +54,7 @@ const App = () => (
                   <Route path="/trending" element={<Trending />} />
                   <Route path="/best-sellers" element={<BestSellers />} />
                   <Route path="/collage-packs" element={<CollagePacks />} />
+                  <Route path="/collage-pack/:packId" element={<CollagePackDetailsPage />} />
                   <Route path="/surprise-me" element={<SurpriseMePage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/about" element={<AboutPage />} />
