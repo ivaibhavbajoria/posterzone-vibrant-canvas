@@ -23,7 +23,7 @@ const Trending = () => {
 
   const handleAddToCart = (poster: LocalPoster) => {
     addToCart({
-      id: poster.id,
+      id: parseInt(poster.id),
       title: poster.title,
       price: poster.price,
       image: poster.image_url
