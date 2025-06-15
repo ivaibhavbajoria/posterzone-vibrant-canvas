@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,29 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, Plus, Upload, Eye } from 'lucide-react';
+import { Trash2, Edit, Plus } from 'lucide-react';
 import { toast } from "sonner";
-import { supabase } from '@/integrations/supabase/client';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
-
-// Type definitions
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-interface Poster {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  category: string;
-  image_url: string;
-  is_trending: boolean;
-  is_best_seller: boolean;
-  created_at: string;
-}
+import { localStorageService, LocalPoster, LocalCategory } from '@/services/localStorageService';
+import { imageUploadService } from '@/services/imageUploadService';
 
 interface PosterFormData {
   title: string;
@@ -45,10 +28,10 @@ interface PosterFormData {
 
 const PosterManagement = () => {
   const { isAdminLoggedIn } = useAdminAuth();
-  const [posters, setPosters] = useState<Poster[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [posters, setPosters] = useState<LocalPoster[]>([]);
+  const [categories, setCategories] = useState<LocalCategory[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingPoster, setEditingPoster] = useState<Poster | null>(null);
+  const [editingPoster, setEditingPoster] = useState<LocalPoster | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<PosterFormData>({
     title: '',
@@ -60,47 +43,22 @@ const PosterManagement = () => {
     image: null
   });
 
-  // Fetch posters with better error handling
-  const fetchPosters = async () => {
+  // Load data from localStorage
+  const loadData = () => {
     try {
-      console.log('Fetching posters...');
-      const { data, error } = await supabase
-        .from('posters')
-        .select('*')
-        .order('created_at', { ascending: false });
+      console.log('Loading data from localStorage...');
+      localStorageService.initializeData();
+      const loadedPosters = localStorageService.getPosters();
+      const loadedCategories = localStorageService.getCategories();
       
-      if (error) {
-        console.error('Error fetching posters:', error);
-        throw new Error(error.message);
-      }
+      console.log('Loaded posters:', loadedPosters);
+      console.log('Loaded categories:', loadedCategories);
       
-      console.log('Posters fetched successfully:', data);
-      setPosters(data as Poster[]);
+      setPosters(loadedPosters);
+      setCategories(loadedCategories);
     } catch (error) {
-      console.error('Error fetching posters:', error);
-      toast.error('Failed to fetch posters');
-    }
-  };
-
-  // Fetch categories with better error handling
-  const fetchCategories = async () => {
-    try {
-      console.log('Fetching categories...');
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching categories:', error);
-        throw new Error(error.message);
-      }
-      
-      console.log('Categories fetched successfully:', data);
-      setCategories(data as Category[]);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to fetch categories');
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
     }
   };
 
@@ -109,8 +67,7 @@ const PosterManagement = () => {
       toast.error('Admin authentication required');
       return;
     }
-    fetchPosters();
-    fetchCategories();
+    loadData();
   }, [isAdminLoggedIn]);
 
   const handleInputChange = (field: keyof PosterFormData, value: any) => {
@@ -128,40 +85,6 @@ const PosterManagement = () => {
         ...prev,
         image: file
       }));
-    }
-  };
-
-  const uploadImage = async (file: File): Promise<string> => {
-    try {
-      console.log('Starting image upload for file:', file.name);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `poster-${Date.now()}.${fileExt}`;
-      const filePath = fileName;
-
-      console.log('Uploading to path:', filePath);
-
-      // Upload directly to the posters bucket
-      const { error: uploadError } = await supabase.storage
-        .from('posters')
-        .upload(filePath, file, {
-          upsert: true
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage
-        .from('posters')
-        .getPublicUrl(filePath);
-
-      console.log('Image uploaded successfully, public URL:', data.publicUrl);
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error in uploadImage:', error);
-      throw error;
     }
   };
 
@@ -184,7 +107,12 @@ const PosterManagement = () => {
       
       if (formData.image) {
         console.log('Uploading new image...');
-        imageUrl = await uploadImage(formData.image);
+        try {
+          imageUrl = await imageUploadService.uploadImage(formData.image);
+        } catch (uploadError) {
+          console.warn('API upload failed, using base64 fallback:', uploadError);
+          imageUrl = await imageUploadService.convertToBase64(formData.image);
+        }
       }
 
       const posterData = {
@@ -194,34 +122,21 @@ const PosterManagement = () => {
         category: formData.category,
         is_trending: formData.is_trending,
         is_best_seller: formData.is_best_seller,
-        image_url: imageUrl,
-        updated_at: new Date().toISOString()
+        image_url: imageUrl
       };
 
-      console.log('Submitting poster data:', posterData);
+      console.log('Saving poster data:', posterData);
 
       if (editingPoster) {
         console.log('Updating existing poster with ID:', editingPoster.id);
-        const { error } = await supabase
-          .from('posters')
-          .update(posterData)
-          .eq('id', editingPoster.id);
-        
-        if (error) {
-          console.error('Update error:', error);
-          throw error;
+        const updatedPoster = localStorageService.updatePoster(editingPoster.id, posterData);
+        if (!updatedPoster) {
+          throw new Error('Failed to update poster');
         }
         toast.success('Poster updated successfully');
       } else {
         console.log('Creating new poster...');
-        const { error } = await supabase
-          .from('posters')
-          .insert([posterData]);
-        
-        if (error) {
-          console.error('Insert error:', error);
-          throw error;
-        }
+        localStorageService.addPoster(posterData);
         toast.success('Poster added successfully');
       }
 
@@ -239,7 +154,7 @@ const PosterManagement = () => {
       setEditingPoster(null);
       
       // Refresh the posters list
-      await fetchPosters();
+      loadData();
     } catch (error) {
       console.error('Error saving poster:', error);
       toast.error(`Failed to save poster: ${error.message}`);
@@ -248,7 +163,7 @@ const PosterManagement = () => {
     }
   };
 
-  const handleEdit = (poster: Poster) => {
+  const handleEdit = (poster: LocalPoster) => {
     console.log('Editing poster:', poster);
     setEditingPoster(poster);
     setFormData({
@@ -268,17 +183,14 @@ const PosterManagement = () => {
 
     try {
       console.log('Deleting poster with ID:', id);
-      const { error } = await supabase
-        .from('posters')
-        .delete()
-        .eq('id', id);
+      const success = localStorageService.deletePoster(id);
       
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
+      if (!success) {
+        throw new Error('Poster not found');
       }
+      
       toast.success('Poster deleted successfully');
-      fetchPosters();
+      loadData();
     } catch (error) {
       console.error('Error deleting poster:', error);
       toast.error('Failed to delete poster');
@@ -315,7 +227,7 @@ const PosterManagement = () => {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Poster Management</CardTitle>
-            <CardDescription>Manage your poster inventory</CardDescription>
+            <CardDescription>Manage your poster inventory (stored locally)</CardDescription>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
             setIsAddDialogOpen(open);
