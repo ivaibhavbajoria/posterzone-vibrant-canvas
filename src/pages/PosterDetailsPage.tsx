@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Heart, ShoppingCart, ArrowLeft } from "lucide-react";
@@ -5,15 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-
-type PosterType = {
-  id: number;
-  title: string;
-  image: string;
-  price: number;
-  category: string;
-  liked: boolean;
-};
+import { localStorageService, LocalPoster } from "@/services/localStorageService";
 
 const PosterDetailsPage = () => {
   const { toast } = useToast();
@@ -21,67 +14,58 @@ const PosterDetailsPage = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   
-  const [poster, setPoster] = useState<PosterType | null>(null);
+  const [poster, setPoster] = useState<LocalPoster | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("12×16″");
   const [quantity, setQuantity] = useState<number>(1);
+  const [liked, setLiked] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Mock data for now - in a real app, you'd fetch this from an API
   useEffect(() => {
-    // Simulating API fetch for poster details
-    const mockPosters = [
-      {
-        id: 1,
-        title: "Digital Neon Cityscape",
-        image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5",
-        price: 24.99,
-        category: "abstract",
-        liked: false,
-      },
-      {
-        id: 2,
-        title: "Minimal Code Pattern",
-        image: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7",
-        price: 19.99,
-        category: "minimalist",
-        liked: false,
-      },
-      {
-        id: 3,
-        title: "Tech Perspective",
-        image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b",
-        price: 29.99,
-        category: "abstract",
-        liked: false,
-      },
-      {
-        id: 4,
-        title: "Starry Night Forest",
-        image: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb",
-        price: 22.99,
-        category: "nature",
-        liked: false,
-      }
-    ];
-    
-    const foundPoster = mockPosters.find(p => p.id === Number(posterId));
+    // Load poster from localStorage
+    localStorageService.initializeData();
+    const allPosters = localStorageService.getPosters();
+    const foundPoster = allPosters.find(p => p.id === posterId);
     
     if (foundPoster) {
       setPoster(foundPoster);
+      
+      // Check if poster is liked
+      const savedLikes = localStorage.getItem('likedPosters');
+      if (savedLikes) {
+        const likedPosters = new Set(JSON.parse(savedLikes));
+        setLiked(likedPosters.has(foundPoster.id));
+      }
     } else {
-      // Handle not found
-      navigate('/not-found');
+      // Navigate to 404 if poster not found
+      navigate('/not-found', { replace: true });
+      return;
     }
+    
+    setLoading(false);
   }, [posterId, navigate]);
 
   // Toggle liked status
   const toggleLike = () => {
     if (poster) {
-      setPoster({...poster, liked: !poster.liked});
+      const newLikedStatus = !liked;
+      setLiked(newLikedStatus);
+      
+      const savedLikes = localStorage.getItem('likedPosters');
+      const likedPosters = savedLikes ? new Set(JSON.parse(savedLikes)) : new Set();
+      
+      if (newLikedStatus) {
+        likedPosters.add(poster.id);
+      } else {
+        likedPosters.delete(poster.id);
+      }
+      
+      localStorage.setItem('likedPosters', JSON.stringify(Array.from(likedPosters)));
+      
       toast({
-        title: poster.liked ? "Removed from favorites" : "Added to favorites",
-        description: poster.liked 
-          ? `${poster.title} removed from your favorites`
-          : `${poster.title} added to your favorites`,
+        title: newLikedStatus ? "Added to favorites" : "Removed from favorites",
+        description: newLikedStatus 
+          ? `${poster.title} added to your favorites`
+          : `${poster.title} removed from your favorites`,
       });
     }
   };
@@ -90,10 +74,10 @@ const PosterDetailsPage = () => {
   const handleAddToCart = () => {
     if (poster) {
       addToCart({
-        id: poster.id,
+        id: parseInt(poster.id),
         title: poster.title,
         price: poster.price,
-        image: poster.image,
+        image: poster.image_url,
         size: selectedSize
       }, quantity);
       
@@ -111,8 +95,19 @@ const PosterDetailsPage = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-posterzone-orange mx-auto mb-4"></div>
+          <p>Loading poster details...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!poster) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return null; // This shouldn't happen since we navigate away, but just in case
   }
 
   return (
@@ -138,22 +133,43 @@ const PosterDetailsPage = () => {
             {/* Poster Image */}
             <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
               <img 
-                src={poster.image} 
+                src={poster.image_url || '/placeholder.svg'} 
                 alt={poster.title} 
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
               />
             </div>
 
             {/* Poster Details */}
             <div>
-              <h1 className="text-3xl font-bold text-posterzone-charcoal mb-2">{poster.title}</h1>
-              <p className="text-2xl font-bold text-posterzone-blue mb-4">${poster.price.toFixed(2)}</p>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-posterzone-charcoal mb-2">{poster.title}</h1>
+                  <p className="text-sm text-gray-500 capitalize mb-2">{poster.category}</p>
+                </div>
+                <div className="flex gap-2">
+                  {poster.is_trending && (
+                    <div className="bg-posterzone-orange text-white text-xs px-2 py-1 rounded-md">
+                      Trending
+                    </div>
+                  )}
+                  {poster.is_best_seller && (
+                    <div className="bg-posterzone-blue text-white text-xs px-2 py-1 rounded-md">
+                      Best Seller
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <p className="text-2xl font-bold text-posterzone-blue mb-4">₹{poster.price.toFixed(2)}</p>
               
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-2">Description</h3>
                 <p className="text-gray-600 mb-4">
-                  A beautiful high-quality art print that will add character and style to any room. 
-                  Printed on premium matte paper with vibrant, fade-resistant inks.
+                  {poster.description || "A beautiful high-quality art print that will add character and style to any room. Printed on premium matte paper with vibrant, fade-resistant inks."}
                 </p>
                 
                 <div className="mb-4">
@@ -220,8 +236,8 @@ const PosterDetailsPage = () => {
                 >
                   <Heart 
                     size={20} 
-                    fill={poster.liked ? "#FF5733" : "none"} 
-                    className={poster.liked ? "text-posterzone-orange" : ""}
+                    fill={liked ? "#FF5733" : "none"} 
+                    className={liked ? "text-posterzone-orange" : ""}
                   />
                 </Button>
               </div>
