@@ -4,52 +4,24 @@ import { useToast } from "@/components/ui/use-toast";
 import { Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
-type Poster = {
-  id: number;
-  title: string;
-  image: string;
-  price: number;
-  sales?: number;
-};
+import { useEffect, useState } from "react";
+import { localStorageService, LocalPoster } from "@/services/localStorageService";
 
 type BestSellersSectionProps = {
-  onAddToCart: (poster: Poster) => void;
+  onAddToCart: (poster: any) => void;
 };
 
 const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
   const { toast } = useToast();
+  const [bestSellers, setBestSellers] = useState<LocalPoster[]>([]);
 
-  const bestSellers = [
-    {
-      id: 1,
-      title: "Abstract Geometry Lines",
-      image: "https://images.unsplash.com/photo-1614850523459-c2f4c699c52a",
-      price: 34.99,
-      sales: 1283,
-    },
-    {
-      id: 2,
-      title: "Minimalist Nature",
-      image: "https://images.unsplash.com/photo-1493382051629-7eb03ec93ea2",
-      price: 29.99,
-      sales: 956,
-    },
-    {
-      id: 3,
-      title: "Vintage Cinema Poster",
-      image: "https://images.unsplash.com/photo-1536440136630-a8c3a9f3aee7",
-      price: 39.99,
-      sales: 892,
-    },
-    {
-      id: 4,
-      title: "Urban Cityscape",
-      image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5",
-      price: 32.99,
-      sales: 845,
-    }
-  ];
+  useEffect(() => {
+    // Load bestseller posters from localStorage
+    localStorageService.initializeData();
+    const allPosters = localStorageService.getPosters();
+    const bestsellers = allPosters.filter(poster => poster.is_best_seller).slice(0, 4);
+    setBestSellers(bestsellers);
+  }, []);
 
   const addToCart = (posterTitle: string) => {
     const poster = bestSellers.find(p => p.title === posterTitle);
@@ -58,7 +30,7 @@ const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
         id: poster.id,
         title: poster.title,
         price: poster.price,
-        image: poster.image
+        image: poster.image_url
       });
       toast({
         title: "Added to cart!",
@@ -83,47 +55,56 @@ const BestSellersSection = ({ onAddToCart }: BestSellersSectionProps) => {
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {bestSellers.map((poster, index) => (
-              <motion.div
-                key={poster.id}
-                className="poster-card overflow-hidden"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <div className="relative overflow-hidden group">
-                  <img 
-                    src={poster.image} 
-                    alt={poster.title} 
-                    className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  
-                  {/* Quick action overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <button
-                      className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
-                      onClick={() => addToCart(poster.title)}
-                    >
-                      Add to Cart
-                    </button>
+          {bestSellers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {bestSellers.map((poster, index) => (
+                <motion.div
+                  key={poster.id}
+                  className="poster-card overflow-hidden"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <div className="relative overflow-hidden group">
+                    <img 
+                      src={poster.image_url || '/placeholder.svg'} 
+                      alt={poster.title} 
+                      className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder.svg';
+                      }}
+                    />
+                    
+                    {/* Quick action overlay */}
+                    <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <button
+                        className="bg-posterzone-orange text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all"
+                        onClick={() => addToCart(poster.title)}
+                      >
+                        Add to Cart
+                      </button>
+                    </div>
+                    
+                    {/* Best seller badge */}
+                    <div className="absolute top-2 right-2 bg-posterzone-blue text-white text-xs px-2 py-1 rounded-md">
+                      Best Seller
+                    </div>
                   </div>
-                  
-                  {/* Best seller badge */}
-                  <div className="absolute top-2 right-2 bg-posterzone-blue text-white text-xs px-2 py-1 rounded-md">
-                    Best Seller
+                  <div className="p-4">
+                    <h3 className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer">
+                      {poster.title}
+                    </h3>
+                    <p className="text-posterzone-blue font-semibold">₹{poster.price.toFixed(2)}</p>
                   </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-medium mb-2 hover:text-posterzone-orange cursor-pointer">
-                    {poster.title}
-                  </h3>
-                  <p className="text-posterzone-blue font-semibold">${poster.price.toFixed(2)}</p>
-                  <p className="text-sm text-gray-500">{poster.sales.toLocaleString()} sold</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No bestseller posters available. Add some through the admin panel!</p>
+            </div>
+          )}
         </div>
       </div>
     </section>

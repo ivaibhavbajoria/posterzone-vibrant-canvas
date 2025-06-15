@@ -1,97 +1,60 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, ShoppingCart, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { localStorageService, LocalPoster } from "@/services/localStorageService";
 
 type PosterGridProps = {
   category: string;
-};
-
-type PosterType = {
-  id: number;
-  title: string;
-  image: string;
-  price: number;
-  category: string;
-  liked: boolean;
 };
 
 const PosterGrid = ({ category }: PosterGridProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart } = useCart();
-  const [posters, setPosters] = useState<PosterType[]>([
-    {
-      id: 1,
-      title: "Digital Neon Cityscape",
-      image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5",
-      price: 24.99,
-      category: "abstract",
-      liked: false,
-    },
-    {
-      id: 2,
-      title: "Minimal Code Pattern",
-      image: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7",
-      price: 19.99,
-      category: "minimalist",
-      liked: false,
-    },
-    {
-      id: 3,
-      title: "Tech Perspective",
-      image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b",
-      price: 29.99,
-      category: "abstract",
-      liked: false,
-    },
-    {
-      id: 4,
-      title: "Starry Night Forest",
-      image: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb",
-      price: 22.99,
-      category: "nature",
-      liked: false,
-    },
-    {
-      id: 5,
-      title: "Yellow Light Pathways",
-      image: "https://images.unsplash.com/photo-1500673922987-e212871fec22",
-      price: 24.99,
-      category: "abstract",
-      liked: false,
-    },
-    {
-      id: 6,
-      title: "Minimalist Wave Structure",
-      image: "https://images.unsplash.com/photo-1486718448742-163732cd1544",
-      price: 19.99,
-      category: "minimalist",
-      liked: false,
-    },
-  ]);
+  const [posters, setPosters] = useState<LocalPoster[]>([]);
+  const [likedPosters, setLikedPosters] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Load posters from localStorage
+    localStorageService.initializeData();
+    const allPosters = localStorageService.getPosters();
+    setPosters(allPosters);
+    
+    // Load liked posters from localStorage
+    const savedLikes = localStorage.getItem('likedPosters');
+    if (savedLikes) {
+      setLikedPosters(new Set(JSON.parse(savedLikes)));
+    }
+  }, []);
 
   // Filter posters by category
   const filteredPosters = category === "all" 
     ? posters 
-    : posters.filter(poster => poster.category === category);
+    : posters.filter(poster => poster.category.toLowerCase() === category.toLowerCase());
 
   // Toggle liked status for a poster
-  const toggleLike = (id: number) => {
-    setPosters(posters.map(poster => 
-      poster.id === id 
-        ? { ...poster, liked: !poster.liked } 
-        : poster
-    ));
+  const toggleLike = (id: string) => {
+    const newLikedPosters = new Set(likedPosters);
+    const isLiked = likedPosters.has(id);
+    
+    if (isLiked) {
+      newLikedPosters.delete(id);
+    } else {
+      newLikedPosters.add(id);
+    }
+    
+    setLikedPosters(newLikedPosters);
+    localStorage.setItem('likedPosters', JSON.stringify(Array.from(newLikedPosters)));
 
     const poster = posters.find(p => p.id === id);
     if (poster) {
       toast({
-        title: poster.liked ? "Removed from favorites" : "Added to favorites",
-        description: poster.liked 
+        title: isLiked ? "Removed from favorites" : "Added to favorites",
+        description: isLiked 
           ? `${poster.title} removed from your favorites`
           : `${poster.title} added to your favorites`,
       });
@@ -99,12 +62,12 @@ const PosterGrid = ({ category }: PosterGridProps) => {
   };
 
   // Handle add to cart
-  const handleAddToCart = (poster: PosterType) => {
+  const handleAddToCart = (poster: LocalPoster) => {
     addToCart({
       id: poster.id,
       title: poster.title,
       price: poster.price,
-      image: poster.image
+      image: poster.image_url
     });
     
     toast({
@@ -114,7 +77,7 @@ const PosterGrid = ({ category }: PosterGridProps) => {
   };
 
   // Open poster details page
-  const openPosterDetails = (poster: PosterType) => {
+  const openPosterDetails = (poster: LocalPoster) => {
     navigate(`/poster/${poster.id}`);
   };
 
@@ -131,10 +94,14 @@ const PosterGrid = ({ category }: PosterGridProps) => {
           >
             <div className="relative overflow-hidden group">
               <img 
-                src={poster.image} 
+                src={poster.image_url || '/placeholder.svg'} 
                 alt={poster.title} 
                 className="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover:scale-105"
                 onClick={() => openPosterDetails(poster)}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
               />
               
               {/* Quick action buttons */}
@@ -152,8 +119,8 @@ const PosterGrid = ({ category }: PosterGridProps) => {
                   >
                     <Heart 
                       size={18} 
-                      fill={poster.liked ? "#FF5733" : "none"} 
-                      className={poster.liked ? "text-posterzone-orange" : ""}
+                      fill={likedPosters.has(poster.id) ? "#FF5733" : "none"} 
+                      className={likedPosters.has(poster.id) ? "text-posterzone-orange" : ""}
                     />
                   </button>
                   <button 
@@ -164,6 +131,20 @@ const PosterGrid = ({ category }: PosterGridProps) => {
                   </button>
                 </div>
               </div>
+              
+              {/* Status badges */}
+              <div className="absolute top-2 right-2 flex flex-col gap-1">
+                {poster.is_trending && (
+                  <div className="bg-posterzone-orange text-white text-xs px-2 py-1 rounded-md">
+                    Trending
+                  </div>
+                )}
+                {poster.is_best_seller && (
+                  <div className="bg-posterzone-blue text-white text-xs px-2 py-1 rounded-md">
+                    Best Seller
+                  </div>
+                )}
+              </div>
             </div>
             <div className="p-4">
               <h3 
@@ -172,7 +153,8 @@ const PosterGrid = ({ category }: PosterGridProps) => {
               >
                 {poster.title}
               </h3>
-              <p className="text-posterzone-blue font-semibold">${poster.price.toFixed(2)}</p>
+              <p className="text-posterzone-blue font-semibold">₹{poster.price.toFixed(2)}</p>
+              <p className="text-sm text-gray-500 capitalize">{poster.category}</p>
             </div>
           </motion.div>
         ))}
@@ -181,7 +163,12 @@ const PosterGrid = ({ category }: PosterGridProps) => {
       {/* Show "No posters found" message if filtered list is empty */}
       {filteredPosters.length === 0 && (
         <div className="py-20 text-center">
-          <p className="text-lg text-gray-500">No posters found in this category.</p>
+          <p className="text-lg text-gray-500">
+            {category === "all" 
+              ? "No posters found. Add some through the admin panel!"
+              : `No posters found in the "${category}" category.`
+            }
+          </p>
         </div>
       )}
     </>
