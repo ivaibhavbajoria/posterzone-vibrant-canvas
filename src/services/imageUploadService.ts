@@ -1,43 +1,10 @@
 
-// Using imgbb.com free API - no registration required for basic uploads
-// For production, consider upgrading to a paid service or using Cloudinary
+// Image upload service for backend integration
+// This service will be updated once backend endpoints are available
 
 export class ImageUploadService {
-  private readonly IMGBB_API_KEY = '2d53b3b9c3e6d5c6d5f7a9b8c3d2e1f0'; // Free public key
-  private readonly UPLOAD_URL = 'https://api.imgbb.com/1/upload';
-
-  async uploadImage(file: File): Promise<string> {
-    try {
-      console.log('Uploading image:', file.name);
-      
-      const formData = new FormData();
-      formData.append('key', this.IMGBB_API_KEY);
-      formData.append('image', file);
-
-      const response = await fetch(this.UPLOAD_URL, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error('Image upload failed');
-      }
-
-      console.log('Image uploaded successfully:', result.data.url);
-      return result.data.url;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      throw error;
-    }
-  }
-
-  // Fallback: Convert to base64 if API fails
+  // For now, convert to base64 for preview purposes
+  // In production, this will be replaced with actual cloud storage integration
   async convertToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -45,6 +12,27 @@ export class ImageUploadService {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  // Placeholder for future backend integration
+  async uploadToBackend(file: File): Promise<string> {
+    console.log('Backend upload not implemented yet. Using base64 fallback.');
+    // This will be replaced with actual backend API call
+    // return await this.callBackendUploadAPI(file);
+    return await this.convertToBase64(file);
+  }
+
+  // Main upload method that will use backend when available
+  async uploadImage(file: File): Promise<string> {
+    try {
+      console.log('Preparing image for backend upload:', file.name);
+      
+      // For now, use base64. This will be replaced with backend integration
+      return await this.uploadToBackend(file);
+    } catch (error) {
+      console.error('Error processing image:', error);
+      throw error;
+    }
   }
 }
 

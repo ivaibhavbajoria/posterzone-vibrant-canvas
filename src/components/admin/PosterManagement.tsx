@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, Plus } from 'lucide-react';
+import { Trash2, Edit, Plus, Upload } from 'lucide-react';
 import { toast } from "sonner";
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { localStorageService, LocalPoster, LocalCategory } from '@/services/localStorageService';
@@ -23,6 +23,7 @@ interface PosterFormData {
   category: string;
   is_trending: boolean;
   is_best_seller: boolean;
+  image_url: string;
   image: File | null;
 }
 
@@ -40,6 +41,7 @@ const PosterManagement = () => {
     category: '',
     is_trending: false,
     is_best_seller: false,
+    image_url: '',
     image: null
   });
 
@@ -101,20 +103,8 @@ const PosterManagement = () => {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      let imageUrl = editingPoster?.image_url || '';
-      
-      if (formData.image) {
-        console.log('Uploading new image...');
-        try {
-          imageUrl = await imageUploadService.uploadImage(formData.image);
-        } catch (uploadError) {
-          console.warn('API upload failed, using base64 fallback:', uploadError);
-          imageUrl = await imageUploadService.convertToBase64(formData.image);
-        }
-      }
-
+    // If using image URL directly (backend integration)
+    if (formData.image_url && !formData.image) {
       const posterData = {
         title: formData.title,
         description: formData.description,
@@ -122,44 +112,68 @@ const PosterManagement = () => {
         category: formData.category,
         is_trending: formData.is_trending,
         is_best_seller: formData.is_best_seller,
-        image_url: imageUrl
+        image_url: formData.image_url
       };
 
-      console.log('Saving poster data:', posterData);
-
-      if (editingPoster) {
-        console.log('Updating existing poster with ID:', editingPoster.id);
-        const updatedPoster = localStorageService.updatePoster(editingPoster.id, posterData);
-        if (!updatedPoster) {
-          throw new Error('Failed to update poster');
+      try {
+        if (editingPoster) {
+          localStorageService.updatePoster(editingPoster.id, posterData);
+          toast.success('Poster updated successfully');
+        } else {
+          localStorageService.addPoster(posterData);
+          toast.success('Poster added successfully');
         }
-        toast.success('Poster updated successfully');
-      } else {
-        console.log('Creating new poster...');
-        localStorageService.addPoster(posterData);
-        toast.success('Poster added successfully');
+        resetFormAndClose();
+        loadData();
+      } catch (error) {
+        console.error('Error saving poster:', error);
+        toast.error('Failed to save poster');
       }
+      return;
+    }
 
-      // Reset form and close dialog
-      setFormData({
-        title: '',
-        description: '',
-        price: '',
-        category: '',
-        is_trending: false,
-        is_best_seller: false,
-        image: null
-      });
-      setIsAddDialogOpen(false);
-      setEditingPoster(null);
-      
-      // Refresh the posters list
-      loadData();
-    } catch (error) {
-      console.error('Error saving poster:', error);
-      toast.error(`Failed to save poster: ${error.message}`);
-    } finally {
-      setIsLoading(false);
+    // Handle file upload (for preview/testing purposes)
+    if (formData.image) {
+      setIsLoading(true);
+      try {
+        console.log('Processing image for preview...');
+        const imageUrl = await imageUploadService.uploadImage(formData.image);
+
+        const posterData = {
+          title: formData.title,
+          description: formData.description,
+          price: parseFloat(formData.price),
+          category: formData.category,
+          is_trending: formData.is_trending,
+          is_best_seller: formData.is_best_seller,
+          image_url: imageUrl
+        };
+
+        console.log('Saving poster data:', posterData);
+
+        if (editingPoster) {
+          console.log('Updating existing poster with ID:', editingPoster.id);
+          const updatedPoster = localStorageService.updatePoster(editingPoster.id, posterData);
+          if (!updatedPoster) {
+            throw new Error('Failed to update poster');
+          }
+          toast.success('Poster updated successfully');
+        } else {
+          console.log('Creating new poster...');
+          localStorageService.addPoster(posterData);
+          toast.success('Poster added successfully');
+        }
+
+        resetFormAndClose();
+        loadData();
+      } catch (error) {
+        console.error('Error saving poster:', error);
+        toast.error(`Failed to save poster: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      toast.error('Please provide either an image URL or upload an image file');
     }
   };
 
@@ -173,6 +187,7 @@ const PosterManagement = () => {
       category: poster.category,
       is_trending: poster.is_trending,
       is_best_seller: poster.is_best_seller,
+      image_url: poster.image_url,
       image: null
     });
     setIsAddDialogOpen(true);
@@ -197,7 +212,7 @@ const PosterManagement = () => {
     }
   };
 
-  const resetForm = () => {
+  const resetFormAndClose = () => {
     setFormData({
       title: '',
       description: '',
@@ -205,9 +220,11 @@ const PosterManagement = () => {
       category: '',
       is_trending: false,
       is_best_seller: false,
+      image_url: '',
       image: null
     });
     setEditingPoster(null);
+    setIsAddDialogOpen(false);
   };
 
   if (!isAdminLoggedIn) {
@@ -227,11 +244,11 @@ const PosterManagement = () => {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Poster Management</CardTitle>
-            <CardDescription>Manage your poster inventory (stored locally)</CardDescription>
+            <CardDescription>Manage your poster inventory (Local storage + Cloud images)</CardDescription>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
             setIsAddDialogOpen(open);
-            if (!open) resetForm();
+            if (!open) resetFormAndClose();
           }}>
             <DialogTrigger asChild>
               <Button>
@@ -245,7 +262,7 @@ const PosterManagement = () => {
                   {editingPoster ? 'Edit Poster' : 'Add New Poster'}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingPoster ? 'Update poster details' : 'Fill in the details to add a new poster'}
+                  {editingPoster ? 'Update poster details' : 'Fill in the details to add a new poster. Provide either an image URL (recommended for backend integration) or upload a file.'}
                 </DialogDescription>
               </DialogHeader>
               
@@ -300,7 +317,20 @@ const PosterManagement = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="image">Poster Image</Label>
+                  <Label htmlFor="image_url">Image URL (Recommended)</Label>
+                  <Input
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) => handleInputChange('image_url', e.target.value)}
+                    placeholder="https://your-cloud-storage.com/image.jpg"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Provide the direct URL from your cloud storage (Google Cloud, AWS S3, Cloudinary, etc.)
+                  </p>
+                </div>
+                
+                <div className="border-t pt-4">
+                  <Label htmlFor="image">Or Upload Image File (For Testing)</Label>
                   <div className="mt-2">
                     <Input
                       id="image"
@@ -314,6 +344,9 @@ const PosterManagement = () => {
                         Selected: {formData.image.name}
                       </p>
                     )}
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Note: File uploads are for testing only. Use image URLs for production.
+                    </p>
                   </div>
                 </div>
                 
@@ -369,6 +402,10 @@ const PosterManagement = () => {
                     src={poster.image_url || '/placeholder.svg'}
                     alt={poster.title}
                     className="w-12 h-12 object-cover rounded"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder.svg';
+                    }}
                   />
                 </TableCell>
                 <TableCell className="font-medium">{poster.title}</TableCell>
@@ -405,7 +442,9 @@ const PosterManagement = () => {
         
         {posters.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            No posters found. Add your first poster to get started.
+            <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium mb-2">No posters found</p>
+            <p>Add your first poster using cloud storage URLs or upload files for testing.</p>
           </div>
         )}
       </CardContent>
