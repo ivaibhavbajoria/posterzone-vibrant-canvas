@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 
-// Use the same collagePacks data as in CollagePacks and CollagePacksSection
+// Define the collage packs array here
 const COLLAGE_PACKS = [
   {
     id: 1,
@@ -76,14 +76,25 @@ const COLLAGE_PACKS = [
 ];
 
 const CollagePackDetailsPage = () => {
-  const { packId } = useParams<{ packId: string }>();
+  const { packId } = useParams<{ packId?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart } = useCart();
   const [pack, setPack] = useState<any>(null);
 
   useEffect(() => {
-    const foundPack = COLLAGE_PACKS.find(p => p.id === Number(packId));
+    // Robust handling: support both string and number, and fallback if not valid
+    if (!packId) {
+      // packId missing e.g. if user visits /collage-pack/ with no id
+      navigate("/not-found", { replace: true });
+      return;
+    }
+    const numericPackId = Number(packId);
+    if (isNaN(numericPackId)) {
+      navigate("/not-found", { replace: true });
+      return;
+    }
+    const foundPack = COLLAGE_PACKS.find(p => p.id === numericPackId);
     if (foundPack) {
       setPack(foundPack);
     } else {
@@ -92,7 +103,7 @@ const CollagePackDetailsPage = () => {
   }, [packId, navigate]);
 
   if (!pack) {
-    return null;
+    return null; // or loading spinner
   }
 
   const handleAddToCart = () => {
