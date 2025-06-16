@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, ShoppingCart, Tag, Gift } from "lucide-react";
@@ -43,7 +42,8 @@ interface BundleOffer {
 interface Coupon {
   id: string;
   code: string;
-  discount_percentage: number;
+  value: number;
+  type: string;
   is_active: boolean;
 }
 
@@ -152,11 +152,12 @@ const CheckoutPage = () => {
     const adminCoupon = adminCoupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
     
     if (adminCoupon) {
-      setDiscount(adminCoupon.discount_percentage / 100);
+      const discountValue = adminCoupon.type === 'percentage' ? adminCoupon.value / 100 : adminCoupon.value;
+      setDiscount(discountValue);
       setAppliedCoupon(adminCoupon.code);
       toast({
         title: "Coupon applied!",
-        description: `You saved ${adminCoupon.discount_percentage}% on your order`,
+        description: `You saved ${adminCoupon.type === 'percentage' ? adminCoupon.value + '%' : '₹' + adminCoupon.value} on your order`,
       });
       return;
     }
