@@ -42,6 +42,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_import_logs: {
+        Row: {
+          created_at: string | null
+          error_details: Json | null
+          failed_imports: number
+          id: string
+          imported_by: string | null
+          successful_imports: number
+          total_rows: number
+        }
+        Insert: {
+          created_at?: string | null
+          error_details?: Json | null
+          failed_imports: number
+          id?: string
+          imported_by?: string | null
+          successful_imports: number
+          total_rows: number
+        }
+        Update: {
+          created_at?: string | null
+          error_details?: Json | null
+          failed_imports?: number
+          id?: string
+          imported_by?: string | null
+          successful_imports?: number
+          total_rows?: number
+        }
+        Relationships: []
+      }
       bundles: {
         Row: {
           created_at: string
@@ -275,6 +305,9 @@ export type Database = {
           is_trending: boolean | null
           price: number
           price_category: Database["public"]["Enums"]["price_category"] | null
+          size_a3_price: number | null
+          size_a4_price: number | null
+          size_a6_price: number | null
           stock: number | null
           title: string
           updated_at: string | null
@@ -289,6 +322,9 @@ export type Database = {
           is_trending?: boolean | null
           price: number
           price_category?: Database["public"]["Enums"]["price_category"] | null
+          size_a3_price?: number | null
+          size_a4_price?: number | null
+          size_a6_price?: number | null
           stock?: number | null
           title: string
           updated_at?: string | null
@@ -303,6 +339,9 @@ export type Database = {
           is_trending?: boolean | null
           price?: number
           price_category?: Database["public"]["Enums"]["price_category"] | null
+          size_a3_price?: number | null
+          size_a4_price?: number | null
+          size_a6_price?: number | null
           stock?: number | null
           title?: string
           updated_at?: string | null
@@ -351,6 +390,39 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
           zip_code?: string | null
+        }
+        Relationships: []
+      }
+      security_audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          resource: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -416,6 +488,16 @@ export type Database = {
       }
       hash_password: {
         Args: { password: string }
+        Returns: string
+      }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_resource?: string
+          p_details?: Json
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
         Returns: string
       }
       verify_admin_credentials: {

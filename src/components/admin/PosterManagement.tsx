@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -244,142 +243,157 @@ const PosterManagement = () => {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Poster Management</CardTitle>
-            <CardDescription>Manage your poster inventory (Local storage + Cloud images)</CardDescription>
+            <CardDescription>Manage your poster inventory with INR pricing (A6 base + A4/A3 auto-pricing)</CardDescription>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-            setIsAddDialogOpen(open);
-            if (!open) resetFormAndClose();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Poster
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingPoster ? 'Edit Poster' : 'Add New Poster'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingPoster ? 'Update poster details' : 'Fill in the details to add a new poster. Provide either an image URL (recommended for backend integration) or upload a file.'}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="title">Title *</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
-                      placeholder="Enter poster title"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="price">Price (₹) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => handleInputChange('price', e.target.value)}
-                      placeholder="Enter price"
-                    />
-                  </div>
-                </div>
+          <div className="flex gap-2">
+            <BulkImportDialog />
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+              setIsAddDialogOpen(open);
+              if (!open) resetFormAndClose();
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Poster
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingPoster ? 'Edit Poster' : 'Add New Poster'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingPoster ? 'Update poster details' : 'Fill in the details to add a new poster. Price will be set for A6 size (A4 = +₹15, A3 = +₹25)'}
+                  </DialogDescription>
+                </DialogHeader>
                 
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    placeholder="Enter poster description"
-                    rows={3}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="category">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="image_url">Image URL (Recommended)</Label>
-                  <Input
-                    id="image_url"
-                    value={formData.image_url}
-                    onChange={(e) => handleInputChange('image_url', e.target.value)}
-                    placeholder="https://your-cloud-storage.com/image.jpg"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Provide the direct URL from your cloud storage (Google Cloud, AWS S3, Cloudinary, etc.)
-                  </p>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <Label htmlFor="image">Or Upload Image File (For Testing)</Label>
-                  <div className="mt-2">
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="cursor-pointer"
-                    />
-                    {formData.image && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Selected: {formData.image.name}
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title">Title *</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => handleInputChange('title', e.target.value)}
+                        placeholder="Enter poster title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="price">A6 Base Price (₹) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={formData.price}
+                        onChange={(e) => handleInputChange('price', e.target.value)}
+                        placeholder="Enter A6 base price"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        A4: +₹15, A3: +₹25 will be auto-calculated
                       </p>
-                    )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      placeholder="Enter poster description"
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="category">Category *</Label>
+                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.name}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="image_url">Image URL (Recommended)</Label>
+                    <Input
+                      id="image_url"
+                      value={formData.image_url}
+                      onChange={(e) => handleInputChange('image_url', e.target.value)}
+                      placeholder="https://your-cloud-storage.com/image.jpg"
+                    />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Note: File uploads are for testing only. Use image URLs for production.
+                      Provide the direct URL from your cloud storage (Google Cloud, AWS S3, Cloudinary, etc.)
                     </p>
                   </div>
+                  
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <h4 className="font-medium text-blue-800 mb-2">Price Preview:</h4>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p>A6 Size: ₹{formData.price || 0}</p>
+                      <p>A4 Size: ₹{(parseInt(formData.price) || 0) + 15}</p>
+                      <p>A3 Size: ₹{(parseInt(formData.price) || 0) + 25}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <Label htmlFor="image">Or Upload Image File (For Testing)</Label>
+                    <div className="mt-2">
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="cursor-pointer"
+                      />
+                      {formData.image && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Selected: {formData.image.name}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Note: File uploads are for testing only. Use image URLs for production.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-6">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="trending"
+                        checked={formData.is_trending}
+                        onCheckedChange={(checked) => handleInputChange('is_trending', checked)}
+                      />
+                      <Label htmlFor="trending">Mark as Trending</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="bestseller"
+                        checked={formData.is_best_seller}
+                        onCheckedChange={(checked) => handleInputChange('is_best_seller', checked)}
+                      />
+                      <Label htmlFor="bestseller">Mark as Best Seller</Label>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="flex gap-6">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="trending"
-                      checked={formData.is_trending}
-                      onCheckedChange={(checked) => handleInputChange('is_trending', checked)}
-                    />
-                    <Label htmlFor="trending">Mark as Trending</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="bestseller"
-                      checked={formData.is_best_seller}
-                      onCheckedChange={(checked) => handleInputChange('is_best_seller', checked)}
-                    />
-                    <Label htmlFor="bestseller">Mark as Best Seller</Label>
-                  </div>
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmit} disabled={isLoading}>
-                  {isLoading ? 'Saving...' : editingPoster ? 'Update' : 'Add'} Poster
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={isLoading}>
+                    {isLoading ? 'Saving...' : editingPoster ? 'Update' : 'Add'} Poster
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -389,7 +403,9 @@ const PosterManagement = () => {
               <TableHead>Image</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
+              <TableHead>A6 Price</TableHead>
+              <TableHead>A4 Price</TableHead>
+              <TableHead>A3 Price</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -411,6 +427,8 @@ const PosterManagement = () => {
                 <TableCell className="font-medium">{poster.title}</TableCell>
                 <TableCell>{poster.category}</TableCell>
                 <TableCell>₹{poster.price}</TableCell>
+                <TableCell>₹{poster.price + 15}</TableCell>
+                <TableCell>₹{poster.price + 25}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     {poster.is_trending && <Badge variant="destructive">Trending</Badge>}

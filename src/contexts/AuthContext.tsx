@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,6 +124,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
 
+      // Log security event
+      await securityService.logLoginAttempt(email, true);
+
       // For admin login, ensure user gets admin privileges
       if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         // Update profile to ensure admin status
@@ -146,6 +148,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast.success("Login successful! Welcome back!");
     } catch (error) {
       console.error('Error signing in:', error);
+      
+      // Log failed login attempt
+      await securityService.logLoginAttempt(email, false, { error: error.message });
+      
       throw error;
     }
   };
@@ -169,6 +175,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         toast.error(`Signup failed: ${error.message}`);
         throw error;
       }
+
+      // Log security event
+      await securityService.logSecurityEvent({
+        action: 'USER_REGISTRATION',
+        resource: 'auth',
+        details: { email, fullName }
+      });
 
       toast.success("Signup successful! Please check your email to verify your account.");
     } catch (error) {

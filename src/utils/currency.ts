@@ -13,3 +13,20 @@ export const convertToINR = (usdAmount: number): number => {
   const exchangeRate = 83;
   return usdAmount * exchangeRate;
 };
+
+export const formatPrice = (amount: number): string => {
+  return `₹${amount.toLocaleString('en-IN')}`;
+};
+
+export const getPriceForSize = (basePrice: number, size: string): number => {
+  switch (size) {
+    case 'A6':
+      return basePrice;
+    case 'A4':
+      return basePrice + 15;
+    case 'A3':
+      return basePrice + 25;
+    default:
+      return basePrice;
+  }
+};

@@ -7,6 +7,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { localStorageService, LocalPoster } from "@/services/localStorageService";
+import { formatPrice, getPriceForSize } from "@/utils/currency";
 
 const PosterDetailsPage = () => {
   const { toast } = useToast();
@@ -15,7 +16,7 @@ const PosterDetailsPage = () => {
   const { addToCart } = useCart();
   
   const [poster, setPoster] = useState<LocalPoster | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>("12×16″");
+  const [selectedSize, setSelectedSize] = useState<string>("A6");
   const [quantity, setQuantity] = useState<number>(1);
   const [liked, setLiked] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -70,13 +71,20 @@ const PosterDetailsPage = () => {
     }
   };
 
+  // Get price for selected size
+  const getCurrentPrice = () => {
+    if (!poster) return 0;
+    return getPriceForSize(poster.price, selectedSize);
+  };
+
   // Add to cart
   const handleAddToCart = () => {
     if (poster) {
+      const currentPrice = getCurrentPrice();
       addToCart({
         id: parseInt(poster.id),
         title: poster.title,
-        price: poster.price,
+        price: currentPrice,
         image: poster.image_url,
         size: selectedSize
       }, quantity);
@@ -164,7 +172,9 @@ const PosterDetailsPage = () => {
                 </div>
               </div>
               
-              <p className="text-2xl font-bold text-posterzone-blue mb-4">₹{poster.price.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-posterzone-blue mb-4">
+                {formatPrice(getCurrentPrice())}
+              </p>
               
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-2">Description</h3>
@@ -186,19 +196,29 @@ const PosterDetailsPage = () => {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-2">Size Options</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  {["8×10″", "12×16″", "18×24″"].map(size => (
+                  {["A6", "A4", "A3"].map(size => (
                     <button 
                       key={size}
-                      className={`border rounded py-2 transition-colors ${
+                      className={`border rounded py-3 px-4 transition-colors ${
                         selectedSize === size 
                           ? "border-posterzone-orange bg-posterzone-orange/10 text-posterzone-orange" 
                           : "border-gray-300 hover:border-posterzone-orange hover:bg-posterzone-lightgray"
                       }`}
                       onClick={() => setSelectedSize(size)}
                     >
-                      {size}
+                      <div className="text-center">
+                        <div className="font-medium">{size}</div>
+                        <div className="text-sm text-gray-500">
+                          {formatPrice(getPriceForSize(poster.price, size))}
+                        </div>
+                      </div>
                     </button>
                   ))}
+                </div>
+                <div className="mt-2 text-sm text-gray-600">
+                  <p>• A6: {formatPrice(poster.price)} (Base price)</p>
+                  <p>• A4: {formatPrice(poster.price + 15)} (+₹15)</p>
+                  <p>• A3: {formatPrice(poster.price + 25)} (+₹25)</p>
                 </div>
               </div>
               
@@ -206,14 +226,14 @@ const PosterDetailsPage = () => {
                 <h3 className="text-lg font-semibold mb-2">Quantity</h3>
                 <div className="flex border rounded w-32">
                   <button
-                    className="px-3 py-2"
+                    className="px-3 py-2 hover:bg-gray-100"
                     onClick={() => updateQuantity(quantity - 1)}
                   >
                     -
                   </button>
-                  <span className="flex-1 text-center py-2">{quantity}</span>
+                  <span className="flex-1 text-center py-2 border-x">{quantity}</span>
                   <button
-                    className="px-3 py-2"
+                    className="px-3 py-2 hover:bg-gray-100"
                     onClick={() => updateQuantity(quantity + 1)}
                   >
                     +
@@ -227,7 +247,7 @@ const PosterDetailsPage = () => {
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2" size={18} />
-                  Add to Cart
+                  Add to Cart - {formatPrice(getCurrentPrice() * quantity)}
                 </Button>
                 <Button 
                   variant="outline" 

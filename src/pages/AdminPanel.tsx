@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import CustomerManagement from '@/components/admin/CustomerManagement';
 import OrderManagement from '@/components/admin/OrderManagement';
 import PromotionsManagement from '@/components/admin/PromotionsManagement';
 import AdminSettings from '@/components/admin/AdminSettings';
+import SecurityAuditLogs from '@/components/admin/SecurityAuditLogs';
 import { initializeRealtime } from '@/integrations/supabase/setup-realtime';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
@@ -142,7 +142,7 @@ const AdminPanel = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -166,6 +166,10 @@ const AdminPanel = () => {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Security
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -347,6 +351,10 @@ const AdminPanel = () => {
                   </Card>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="security">
+              <SecurityAuditLogs />
             </TabsContent>
 
             <TabsContent value="settings">
