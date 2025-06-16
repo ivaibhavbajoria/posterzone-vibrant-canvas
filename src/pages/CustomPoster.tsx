@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCart } from "@/contexts/CartContext";
+import { formatPrice, getPriceForSize } from "@/utils/currency";
 
 const CustomPoster = () => {
   const { toast } = useToast();
+  const { addToCart } = useCart();
   
   const [posterDetails, setPosterDetails] = useState({
     title: "",
-    size: "18x24",
+    size: "A6",
     frame: "none",
     quantity: 1,
   });
@@ -89,13 +92,37 @@ const CustomPoster = () => {
     
     setIsUploading(true);
     
-    // Simulate upload process
+    // Calculate price based on size
+    const basePrice = 299; // Base price for A6 in rupees
+    const finalPrice = getPriceForSize(basePrice, posterDetails.size);
+    
+    // Simulate upload process and add to cart
     setTimeout(() => {
+      const customPoster = {
+        id: Date.now(), // Temporary ID for custom poster
+        title: posterDetails.title,
+        price: finalPrice,
+        image: previewUrl,
+        size: posterDetails.size,
+      };
+      
+      addToCart(customPoster, posterDetails.quantity);
+      
       setIsUploading(false);
       toast({
         title: "Custom poster created!",
         description: "Your poster has been added to cart.",
       });
+      
+      // Reset form
+      setPosterDetails({
+        title: "",
+        size: "A6",
+        frame: "none",
+        quantity: 1,
+      });
+      setUploadedFile(null);
+      setPreviewUrl("");
     }, 2000);
   };
   
@@ -103,6 +130,9 @@ const CustomPoster = () => {
     setUploadedFile(null);
     setPreviewUrl("");
   };
+
+  const basePrice = 299;
+  const currentPrice = getPriceForSize(basePrice, posterDetails.size);
 
   return (
     <div className="min-h-screen bg-posterzone-lightgray py-12">
@@ -198,9 +228,9 @@ const CustomPoster = () => {
                             <SelectValue placeholder="Select size" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="11x17">11" x 17" - Small ($19.99)</SelectItem>
-                            <SelectItem value="18x24">18" x 24" - Medium ($29.99)</SelectItem>
-                            <SelectItem value="24x36">24" x 36" - Large ($39.99)</SelectItem>
+                            <SelectItem value="A6">A6 - Small ({formatPrice(getPriceForSize(basePrice, "A6"))})</SelectItem>
+                            <SelectItem value="A4">A4 - Medium ({formatPrice(getPriceForSize(basePrice, "A4"))})</SelectItem>
+                            <SelectItem value="A3">A3 - Large ({formatPrice(getPriceForSize(basePrice, "A3"))})</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -218,9 +248,9 @@ const CustomPoster = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">No Frame</SelectItem>
-                            <SelectItem value="black">Black Frame (+$15.00)</SelectItem>
-                            <SelectItem value="white">White Frame (+$15.00)</SelectItem>
-                            <SelectItem value="natural">Natural Wood Frame (+$25.00)</SelectItem>
+                            <SelectItem value="black">Black Frame (+₹50)</SelectItem>
+                            <SelectItem value="white">White Frame (+₹50)</SelectItem>
+                            <SelectItem value="natural">Natural Wood Frame (+₹100)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -244,6 +274,15 @@ const CustomPoster = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-medium">Total Price:</span>
+                          <span className="text-xl font-bold text-posterzone-orange">
+                            {formatPrice(currentPrice * posterDetails.quantity)}
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="pt-4">

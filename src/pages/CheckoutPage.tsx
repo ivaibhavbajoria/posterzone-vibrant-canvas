@@ -13,11 +13,12 @@ import {
 } from "@/components/ui/card";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatPrice } from "@/utils/currency";
 
 interface UserProfile {
   id: string;
@@ -56,6 +57,7 @@ const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { toast } = useToast();
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
@@ -253,119 +255,31 @@ const CheckoutPage = () => {
     });
   };
 
-  const handleGokwikPayment = () => {
-    // This is where Gokwik integration would go
-    // For now, simulate payment success
-    toast({
-      title: "Gokwik Integration Required",
-      description: "Please provide your Gokwik API credentials to enable payment processing",
-      variant: "destructive",
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to place an order.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Create order in database
-      const orderData = {
-        user_id: user.id,
-        total: total,
-        status: 'pending',
-        shipping_address: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-        }
-      };
-
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create poster entries and order items
-      const posterPromises = cartItems.map(async (item) => {
-        const { data: existingPoster } = await supabase
-          .from('posters')
-          .select('id')
-          .eq('title', item.title)
-          .single();
-
-        if (existingPoster) {
-          return existingPoster.id;
-        }
-
-        const { data: newPoster, error: posterError } = await supabase
-          .from('posters')
-          .insert([{
-            title: item.title,
-            description: `Auto-generated poster: ${item.title}`,
-            price: item.price,
-            image_url: item.image,
-            category: 'general',
-            stock: 100
-          }])
-          .select('id')
-          .single();
-
-        if (posterError) {
-          console.error('Error creating poster:', posterError);
-          throw new Error(`Could not create poster: ${item.title}`);
-        }
-
-        return newPoster.id;
-      });
-
-      const posterIds = await Promise.all(posterPromises);
-
-      const orderItems = cartItems.map((item, index) => ({
-        order_id: order.id,
-        poster_id: posterIds[index],
-        quantity: item.quantity,
-        price: item.price
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      setCheckoutComplete(true);
-      setOrderNumber(order.id.slice(0, 8).toUpperCase());
-      clearCart();
-      
+  const handleProceedToPay = () => {
+    if (!user) {
       toast({
-        title: "Order placed successfully!",
-        description: `Your order #${order.id.slice(0, 8).toUpperCase()} has been confirmed.`,
-      });
-
-    } catch (error) {
-      console.error('Error placing order:', error);
-      toast({
-        title: "Order failed",
-        description: "There was an error placing your order. Please try again.",
+        title: "Authentication required",
+        description: "Please log in to proceed with payment.",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
+      navigate('/auth');
+      return;
     }
+
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
+      toast({
+        title: "Information required",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For now, just show a message that Gokwik integration will be added
+    toast({
+      title: "Redirecting to Payment",
+      description: "Gokwik payment integration will be implemented here.",
+    });
   };
 
   // Calculate totals
@@ -374,8 +288,8 @@ const CheckoutPage = () => {
   const bundleDiscount = selectedBundle ? selectedBundle.savings : 0;
   const couponDiscount = discount;
   const discountedSubtotal = subtotal - bundleDiscount - couponDiscount;
-  const shipping = discountedSubtotal > 1500 ? 0 : 4.99;
-  const tax = discountedSubtotal * 0.08;
+  const shipping = discountedSubtotal > 1500 ? 0 : 50; // Updated shipping cost to rupees
+  const tax = discountedSubtotal * 0.18; // GST 18%
   const total = discountedSubtotal + shipping + tax;
 
   // Check if cart is empty
@@ -399,53 +313,6 @@ const CheckoutPage = () => {
                 Browse Collections
               </Button>
             </Link>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  if (checkoutComplete) {
-    return (
-      <div className="min-h-screen bg-white py-12">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="shadow-lg">
-              <CardContent className="pt-6">
-                <div className="text-center mb-6">
-                  <div className="bg-green-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
-                    <Check className="h-8 w-8 text-green-600" />
-                  </div>
-                  <h1 className="text-2xl font-bold text-posterzone-charcoal mb-2">Order Confirmed!</h1>
-                  <p className="text-gray-600">Thank you for your purchase</p>
-                </div>
-
-                <div className="border-t border-b py-4 my-6">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-medium">Order Number:</span>
-                    <span className="text-posterzone-blue">{orderNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Order Total:</span>
-                    <span>₹{total.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <p className="text-gray-600 text-sm mb-6 text-center">
-                  A confirmation email has been sent to {formData.email}
-                </p>
-
-                <div className="flex justify-center space-x-4">
-                  <Link to="/collections">
-                    <Button variant="outline">Continue Shopping</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
           </motion.div>
         </div>
       </div>
@@ -496,7 +363,7 @@ const CheckoutPage = () => {
                                 <p className="text-sm text-green-600">{offer.description}</p>
                               </div>
                               <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
-                                Save ₹{offer.savings.toFixed(2)}
+                                Save {formatPrice(offer.savings)}
                               </span>
                             </div>
                           </label>
@@ -522,7 +389,7 @@ const CheckoutPage = () => {
                       <div>
                         <span className="font-medium text-green-800">Coupon Applied: {appliedCoupon.code}</span>
                         <p className="text-sm text-green-600">
-                          You saved {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}%` : `₹${appliedCoupon.value}`} on your order
+                          You saved {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}%` : formatPrice(appliedCoupon.value)} on your order
                         </p>
                       </div>
                       <Button variant="outline" size="sm" onClick={removeCoupon}>
@@ -546,80 +413,78 @@ const CheckoutPage = () => {
               </Card>
 
               {/* Customer Information */}
-              <form onSubmit={handleSubmit}>
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Customer Information</CardTitle>
-                    <CardDescription>Please provide your contact details</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input 
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input 
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        disabled
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input 
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>Customer Information</CardTitle>
+                  <CardDescription>Please provide your contact details</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input 
+                      id="firstName"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input 
+                      id="lastName"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input 
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      disabled
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input 
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* Payment Section */}
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Payment</CardTitle>
-                    <CardDescription>Secure payment powered by Gokwik</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <p className="text-gray-600 mb-4">Click below to proceed with secure Gokwik payment</p>
-                      <Button 
-                        type="button"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
-                        onClick={handleGokwikPayment}
-                        disabled={isProcessing}
-                      >
-                        Pay with Gokwik ₹{total.toFixed(2)}
-                      </Button>
-                      <p className="text-xs text-gray-500 mt-2">Gokwik API integration required</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </form>
+              {/* Payment Section */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>Payment</CardTitle>
+                  <CardDescription>Complete your order</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 mb-4">Ready to complete your order?</p>
+                    <Button 
+                      type="button"
+                      className="bg-posterzone-orange hover:bg-posterzone-orange/90 text-white px-8 py-3 text-lg"
+                      onClick={handleProceedToPay}
+                      disabled={isProcessing}
+                    >
+                      Proceed to Pay {formatPrice(total)}
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-2">Secure payment with Gokwik (Integration coming soon)</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
             
             {/* Order Summary */}
@@ -641,8 +506,8 @@ const CheckoutPage = () => {
                           <p className="font-medium">{item.title}</p>
                           {item.size && <p className="text-xs text-gray-500">Size: {item.size}</p>}
                           <div className="flex justify-between mt-1">
-                            <span className="text-sm">₹{item.price.toFixed(2)} × {item.quantity}</span>
-                            <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="text-sm">{formatPrice(item.price)} × {item.quantity}</span>
+                            <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
                           </div>
                         </div>
                       </div>
@@ -652,26 +517,26 @@ const CheckoutPage = () => {
                   <div className="mt-4 pt-4 border-t space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
+                      <span>{formatPrice(subtotal)}</span>
                     </div>
                     
                     {bundleDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Bundle Discount</span>
-                        <span>-₹{bundleDiscount.toFixed(2)}</span>
+                        <span>-{formatPrice(bundleDiscount)}</span>
                       </div>
                     )}
                     
                     {couponDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Coupon Discount ({appliedCoupon?.code})</span>
-                        <span>-₹{couponDiscount.toFixed(2)}</span>
+                        <span>-{formatPrice(couponDiscount)}</span>
                       </div>
                     )}
                     
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipping</span>
-                      <span>{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
+                      <span>{shipping === 0 ? 'Free' : formatPrice(shipping)}</span>
                     </div>
                     
                     {shipping === 0 && (
@@ -679,18 +544,18 @@ const CheckoutPage = () => {
                     )}
                     
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tax (estimated)</span>
-                      <span>₹{tax.toFixed(2)}</span>
+                      <span className="text-gray-600">GST (18%)</span>
+                      <span>{formatPrice(tax)}</span>
                     </div>
                     
                     <div className="flex justify-between font-bold text-lg pt-2 border-t">
                       <span>Total</span>
-                      <span>₹{total.toFixed(2)}</span>
+                      <span>{formatPrice(total)}</span>
                     </div>
                     
                     {(bundleDiscount > 0 || couponDiscount > 0) && (
                       <div className="text-sm text-green-600 pt-2">
-                        Total savings: ₹{(bundleDiscount + couponDiscount).toFixed(2)}
+                        Total savings: {formatPrice(bundleDiscount + couponDiscount)}
                       </div>
                     )}
                   </div>

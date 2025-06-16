@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, Heart, User } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, Heart, User, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu,
@@ -20,10 +21,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const navigate = useNavigate();
   const { cartItems, getCartCount, getCartTotal, removeFromCart } = useCart();
+  const { user, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,6 +41,15 @@ const Header = () => {
     setIsSearchOpen(false);
     // Reset search query after search
     setSearchQuery('');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const cartCount = getCartCount();
@@ -80,10 +92,38 @@ const Header = () => {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
-            {/* User Profile Link */}
-            <Link to="/profile" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Profile">
-              <User size={20} className="text-posterzone-charcoal" />
-            </Link>
+            {/* User Profile/Auth Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Profile">
+                  <User size={20} className="text-posterzone-charcoal" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {user ? (
+                  <>
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/order-history')}>
+                      Order History
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={() => navigate('/auth')}>
+                    Login / Sign Up
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             {/* Favorites Link */}
             <Link to="/favorites" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Favorites">
@@ -113,7 +153,7 @@ const Header = () => {
                 <div className="mt-4">
                   <h3 className="text-sm font-medium mb-2">Popular searches:</h3>
                   <div className="flex flex-wrap gap-2">
-                    {['Abstract', 'Nature', 'Movies', 'Minimalist', 'Vintage'].map((tag) => (
+                    {['Cars', 'Movies', 'Gym Motivation', 'Gun Games'].map((tag) => (
                       <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => setSearchQuery(tag)}>
                         {tag}
                       </Badge>
@@ -129,7 +169,7 @@ const Header = () => {
                 <button 
                   className="p-2 hover:bg-posterzone-lightgray rounded-full relative"
                   aria-label="Cart"
-                  onClick={(e) => e.preventDefault()} // Prevent the default action to allow dropdown to open
+                  onClick={(e) => e.preventDefault()}
                 >
                   <ShoppingCart size={20} className="text-posterzone-charcoal" />
                   {cartCount > 0 && (
@@ -155,8 +195,8 @@ const Header = () => {
                         <div className="flex-1">
                           <p className="text-sm font-medium">{item.title}</p>
                           <div className="flex justify-between mt-1">
-                            <p className="text-xs text-gray-500">{item.quantity} × ${item.price.toFixed(2)}</p>
-                            <p className="text-xs font-medium">${(item.quantity * item.price).toFixed(2)}</p>
+                            <p className="text-xs text-gray-500">{item.quantity} × ₹{item.price.toFixed(2)}</p>
+                            <p className="text-xs font-medium">₹{(item.quantity * item.price).toFixed(2)}</p>
                           </div>
                         </div>
                       </DropdownMenuItem>
@@ -170,7 +210,7 @@ const Header = () => {
                     <div className="p-3">
                       <div className="flex justify-between mb-3">
                         <span className="font-medium">Total:</span>
-                        <span className="font-medium">${cartTotal.toFixed(2)}</span>
+                        <span className="font-medium">₹{cartTotal.toFixed(2)}</span>
                       </div>
                       <div className="flex flex-col space-y-2">
                         <Button className="bg-posterzone-orange hover:bg-posterzone-orange/90 w-full" onClick={() => navigate('/cart')}>
@@ -270,13 +310,34 @@ const Header = () => {
               >
                 Cart
               </Link>
-              <Link
-                to="/profile"
-                className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Profile
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to="/profile"
+                    className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMenuOpen(false);
+                    }}
+                    className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors text-left"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/auth"
+                  className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login / Sign Up
+                </Link>
+              )}
             </nav>
           </div>
         )}

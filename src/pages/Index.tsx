@@ -13,7 +13,7 @@ const Index = () => {
   const { toast } = useToast();
   const { addToCart } = useCart();
 
-  const handleAddToCart = (poster) => {
+  const handleAddToCart = (poster: any) => {
     addToCart(poster);
     toast({
       title: "Added to cart",
