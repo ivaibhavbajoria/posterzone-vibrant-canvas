@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { localStorageService, LocalPoster, LocalCategory } from '@/services/localStorageService';
 import { imageUploadService } from '@/services/imageUploadService';
+import BulkImportDialog from '@/components/admin/BulkImportDialog';
 
 interface PosterFormData {
   title: string;

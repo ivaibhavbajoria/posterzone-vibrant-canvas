@@ -50,7 +50,13 @@ const SecurityAuditLogs = () => {
         return;
       }
 
-      setLogs(data || []);
+      // Transform the data to match our interface, handling ip_address type
+      const transformedLogs = data?.map(log => ({
+        ...log,
+        ip_address: log.ip_address ? String(log.ip_address) : null
+      })) || [];
+
+      setLogs(transformedLogs);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load security logs');
