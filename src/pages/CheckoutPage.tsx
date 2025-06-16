@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, ShoppingCart, Tag, Gift } from "lucide-react";
@@ -45,6 +46,10 @@ interface Coupon {
   value: number;
   type: string;
   is_active: boolean;
+  min_order_amount: number;
+  max_uses: number | null;
+  current_uses: number;
+  expires_at: string | null;
 }
 
 const CheckoutPage = () => {
@@ -57,7 +62,7 @@ const CheckoutPage = () => {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
-  const [appliedCoupon, setAppliedCoupon] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [selectedBundleOffer, setSelectedBundleOffer] = useState<string | null>(null);
   const [adminCoupons, setAdminCoupons] = useState<Coupon[]>([]);
   
@@ -148,13 +153,52 @@ const CheckoutPage = () => {
   };
 
   const applyCoupon = () => {
+    const subtotal = getCartTotal();
+    
     // Check admin-created coupons first
     const adminCoupon = adminCoupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
     
     if (adminCoupon) {
-      const discountValue = adminCoupon.type === 'percentage' ? adminCoupon.value / 100 : adminCoupon.value;
+      // Check minimum order amount
+      if (subtotal < adminCoupon.min_order_amount) {
+        toast({
+          title: "Coupon not applicable",
+          description: `Minimum order amount of ₹${adminCoupon.min_order_amount} required`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check usage limits
+      if (adminCoupon.max_uses && adminCoupon.current_uses >= adminCoupon.max_uses) {
+        toast({
+          title: "Coupon expired",
+          description: "This coupon has reached its usage limit",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check expiry date
+      if (adminCoupon.expires_at && new Date(adminCoupon.expires_at) < new Date()) {
+        toast({
+          title: "Coupon expired",
+          description: "This coupon has expired",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Calculate discount value
+      let discountValue = 0;
+      if (adminCoupon.type === 'percentage') {
+        discountValue = subtotal * (adminCoupon.value / 100);
+      } else {
+        discountValue = adminCoupon.value;
+      }
+      
       setDiscount(discountValue);
-      setAppliedCoupon(adminCoupon.code);
+      setAppliedCoupon(adminCoupon);
       toast({
         title: "Coupon applied!",
         description: `You saved ${adminCoupon.type === 'percentage' ? adminCoupon.value + '%' : '₹' + adminCoupon.value} on your order`,
@@ -173,8 +217,19 @@ const CheckoutPage = () => {
     const couponDiscount = coupons[couponCode.toUpperCase() as keyof typeof coupons];
     
     if (couponDiscount) {
-      setDiscount(couponDiscount);
-      setAppliedCoupon(couponCode.toUpperCase());
+      const discountValue = subtotal * couponDiscount;
+      setDiscount(discountValue);
+      setAppliedCoupon({
+        id: 'hardcoded',
+        code: couponCode.toUpperCase(),
+        value: couponDiscount * 100,
+        type: 'percentage',
+        is_active: true,
+        min_order_amount: 0,
+        max_uses: null,
+        current_uses: 0,
+        expires_at: null
+      });
       toast({
         title: "Coupon applied!",
         description: `You saved ${(couponDiscount * 100)}% on your order`,
@@ -190,7 +245,7 @@ const CheckoutPage = () => {
 
   const removeCoupon = () => {
     setDiscount(0);
-    setAppliedCoupon("");
+    setAppliedCoupon(null);
     setCouponCode("");
     toast({
       title: "Coupon removed",
@@ -317,7 +372,7 @@ const CheckoutPage = () => {
   const subtotal = getCartTotal();
   const selectedBundle = applicableBundleOffers.find(offer => offer.id === selectedBundleOffer);
   const bundleDiscount = selectedBundle ? selectedBundle.savings : 0;
-  const couponDiscount = subtotal * discount;
+  const couponDiscount = discount;
   const discountedSubtotal = subtotal - bundleDiscount - couponDiscount;
   const shipping = discountedSubtotal > 1500 ? 0 : 4.99;
   const tax = discountedSubtotal * 0.08;
@@ -465,8 +520,10 @@ const CheckoutPage = () => {
                   {appliedCoupon ? (
                     <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                       <div>
-                        <span className="font-medium text-green-800">Coupon Applied: {appliedCoupon}</span>
-                        <p className="text-sm text-green-600">You saved {(discount * 100)}% on your order</p>
+                        <span className="font-medium text-green-800">Coupon Applied: {appliedCoupon.code}</span>
+                        <p className="text-sm text-green-600">
+                          You saved {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}%` : `₹${appliedCoupon.value}`} on your order
+                        </p>
                       </div>
                       <Button variant="outline" size="sm" onClick={removeCoupon}>
                         Remove
@@ -607,7 +664,7 @@ const CheckoutPage = () => {
                     
                     {couponDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
-                        <span>Coupon Discount ({appliedCoupon})</span>
+                        <span>Coupon Discount ({appliedCoupon?.code})</span>
                         <span>-₹{couponDiscount.toFixed(2)}</span>
                       </div>
                     )}

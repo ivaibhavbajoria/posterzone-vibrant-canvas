@@ -7,16 +7,22 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import OTPVerification from "@/components/OTPVerification";
 
 const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [showOTP, setShowOTP] = useState(false);
+  const [showPhoneOTP, setShowPhoneOTP] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPhone, setPendingPhone] = useState("");
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
@@ -46,6 +52,101 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) {
+        toast.error(`Google sign-in failed: ${error.message}`);
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      toast.error("Failed to sign in with Google");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePhoneSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: phone,
+        options: {
+          channel: 'sms'
+        }
+      });
+      
+      if (error) {
+        toast.error(`Phone sign-in failed: ${error.message}`);
+      } else {
+        setPendingPhone(phone);
+        setShowPhoneOTP(true);
+        toast.success("OTP sent to your phone number");
+      }
+    } catch (error) {
+      console.error("Phone sign-in error:", error);
+      toast.error("Failed to send OTP");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) {
+        toast.error(`Password reset failed: ${error.message}`);
+      } else {
+        toast.success("Password reset email sent! Check your inbox.");
+        setShowPasswordReset(false);
+      }
+    } catch (error) {
+      console.error("Password reset error:", error);
+      toast.error("Failed to send password reset email");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyPhoneOTP = async (otp: string) => {
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone: pendingPhone,
+        token: otp,
+        type: 'sms'
+      });
+      
+      if (error) {
+        toast.error(`OTP verification failed: ${error.message}`);
+        return false;
+      } else {
+        toast.success("Phone number verified successfully!");
+        setShowPhoneOTP(false);
+        navigate("/");
+        return true;
+      }
+    } catch (error) {
+      console.error("Phone OTP verification error:", error);
+      toast.error("Failed to verify OTP");
+      return false;
+    }
+  };
+
   const handleOTPVerification = () => {
     setShowOTP(false);
     navigate("/");
@@ -54,6 +155,26 @@ const AuthPage: React.FC = () => {
   const handleResendOTP = async () => {
     // Simulate resending OTP
     console.log("Resending OTP to:", pendingEmail);
+  };
+
+  const handleResendPhoneOTP = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: pendingPhone,
+        options: {
+          channel: 'sms'
+        }
+      });
+      
+      if (error) {
+        toast.error(`Failed to resend OTP: ${error.message}`);
+      } else {
+        toast.success("OTP resent to your phone number");
+      }
+    } catch (error) {
+      console.error("Resend phone OTP error:", error);
+      toast.error("Failed to resend OTP");
+    }
   };
 
   if (showOTP) {
@@ -68,6 +189,95 @@ const AuthPage: React.FC = () => {
     );
   }
 
+  if (showPhoneOTP) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh] px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Verify Phone Number</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-gray-600 mb-4">
+              Enter the 6-digit code sent to {pendingPhone}
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const otp = (e.target as any).otp.value;
+              verifyPhoneOTP(otp);
+            }}>
+              <div className="space-y-4">
+                <Input
+                  name="otp"
+                  placeholder="Enter OTP"
+                  maxLength={6}
+                  className="text-center text-lg"
+                  required
+                />
+                <Button type="submit" className="w-full">
+                  Verify OTP
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleResendPhoneOTP}
+                >
+                  Resend OTP
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => setShowPhoneOTP(false)}
+                >
+                  Back to Login
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (showPasswordReset) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh] px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Sending..." : "Send Reset Email"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowPasswordReset(false)}
+              >
+                Back to Login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-[80vh] px-4">
       <Card className="w-full max-w-md">
@@ -77,14 +287,62 @@ const AuthPage: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 w-full">
+          <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsTrigger value="phone">Phone</TabsTrigger>
           </TabsList>
 
           <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {activeTab === "register" && (
+            <TabsContent value="login">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Signing In..." : "Sign In"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                >
+                  Sign in with Google
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full text-sm"
+                  onClick={() => setShowPasswordReset(true)}
+                >
+                  Forgot your password?
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="register">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
                   <Input
@@ -92,49 +350,75 @@ const AuthPage: React.FC = () => {
                     placeholder="Enter your full name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    required={activeTab === "register"}
+                    required
                   />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Creating Account..." : "Create Account"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                >
+                  Sign up with Google
+                </Button>
+              </form>
+            </TabsContent>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading
-                  ? "Loading..."
-                  : activeTab === "login"
-                  ? "Sign In"
-                  : "Create Account"}
-              </Button>
-            </form>
+            <TabsContent value="phone">
+              <form onSubmit={handlePhoneSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Enter your phone number (with country code)"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-gray-500">
+                    Include country code (e.g., +91 for India)
+                  </p>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Sending OTP..." : "Send OTP"}
+                </Button>
+              </form>
+            </TabsContent>
           </CardContent>
         </Tabs>
         <CardFooter className="flex justify-center text-sm text-muted-foreground">
           {activeTab === "login"
             ? "Don't have an account? Register above."
-            : "Already have an account? Login above."}
+            : activeTab === "register"
+            ? "Already have an account? Login above."
+            : "Quick login with your phone number."}
         </CardFooter>
       </Card>
     </div>
