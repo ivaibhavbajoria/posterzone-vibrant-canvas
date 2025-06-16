@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface UserProfile {
   id: string;
@@ -31,6 +32,21 @@ interface UserProfile {
   is_admin: boolean;
 }
 
+interface BundleOffer {
+  id: string;
+  title: string;
+  description: string;
+  applicable: boolean;
+  savings: number;
+}
+
+interface Coupon {
+  id: string;
+  code: string;
+  discount_percentage: number;
+  is_active: boolean;
+}
+
 const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { toast } = useToast();
@@ -42,35 +58,63 @@ const CheckoutPage = () => {
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState("");
+  const [selectedBundleOffer, setSelectedBundleOffer] = useState<string | null>(null);
+  const [adminCoupons, setAdminCoupons] = useState<Coupon[]>([]);
   
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
     phone: "",
   });
 
-  // Bundle offers data
-  const bundleOffers = [
+  // Fetch admin-created coupons
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('is_active', true);
+        
+        if (!error && data) {
+          setAdminCoupons(data);
+        }
+      } catch (error) {
+        console.error('Error fetching coupons:', error);
+      }
+    };
+    
+    fetchCoupons();
+  }, []);
+
+  // Bundle offers data - can be made dynamic later
+  const bundleOffers: BundleOffer[] = [
     {
-      id: 1,
+      id: "buy3get1",
       title: "Buy 3 Get 1 Free",
       description: "Add 4 posters to your cart and get the cheapest one free",
       applicable: cartItems.length >= 3,
       savings: cartItems.length >= 4 ? Math.min(...cartItems.map(item => item.price)) : 0
     },
     {
-      id: 2,
+      id: "spend2000",
       title: "Spend ₹2000+ Get 15% Off",
       description: "Get 15% discount on orders above ₹2000",
       applicable: getCartTotal() >= 2000,
       savings: getCartTotal() >= 2000 ? getCartTotal() * 0.15 : 0
+    },
+    {
+      id: "spend1500",
+      title: "Spend ₹1500+ Get 10% Off", 
+      description: "Get 10% discount on orders above ₹1500",
+      applicable: getCartTotal() >= 1500,
+      savings: getCartTotal() >= 1500 ? getCartTotal() * 0.10 : 0
     }
   ];
+
+  // Filter applicable bundle offers
+  const applicableBundleOffers = bundleOffers.filter(offer => offer.applicable && offer.savings > 0);
 
   useEffect(() => {
     if (profile) {
@@ -80,10 +124,6 @@ const CheckoutPage = () => {
         firstName: nameParts[0] || "",
         lastName: nameParts.slice(1).join(' ') || "",
         email: user?.email || "",
-        address: profile.address || "",
-        city: profile.city || "",
-        state: profile.state || "",
-        zipCode: profile.zip_code || "",
         phone: profile.phone || "",
       });
       setIsLoadingProfile(false);
@@ -93,10 +133,6 @@ const CheckoutPage = () => {
         firstName: user.user_metadata?.full_name?.split(' ')[0] || "",
         lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || "",
         email: user.email || "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
         phone: "",
       });
       setIsLoadingProfile(false);
@@ -112,7 +148,20 @@ const CheckoutPage = () => {
   };
 
   const applyCoupon = () => {
-    // Sample coupon codes
+    // Check admin-created coupons first
+    const adminCoupon = adminCoupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
+    
+    if (adminCoupon) {
+      setDiscount(adminCoupon.discount_percentage / 100);
+      setAppliedCoupon(adminCoupon.code);
+      toast({
+        title: "Coupon applied!",
+        description: `You saved ${adminCoupon.discount_percentage}% on your order`,
+      });
+      return;
+    }
+
+    // Fallback to hardcoded coupons
     const coupons = {
       'SAVE10': 0.10,
       'WELCOME20': 0.20,
@@ -148,6 +197,16 @@ const CheckoutPage = () => {
     });
   };
 
+  const handleGokwikPayment = () => {
+    // This is where Gokwik integration would go
+    // For now, simulate payment success
+    toast({
+      title: "Gokwik Integration Required",
+      description: "Please provide your Gokwik API credentials to enable payment processing",
+      variant: "destructive",
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -167,15 +226,11 @@ const CheckoutPage = () => {
       // Create order in database
       const orderData = {
         user_id: user.id,
-        total: getCartTotal(),
+        total: total,
         status: 'pending',
         shipping_address: {
           firstName: formData.firstName,
           lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
           phone: formData.phone,
         }
       };
@@ -188,13 +243,8 @@ const CheckoutPage = () => {
 
       if (orderError) throw orderError;
 
-      // Debug: Log cart items
-      console.log('Cart items:', cartItems);
-
-      // For now, let's create dummy poster entries in the database if they don't exist
-      // This is a temporary solution to make orders work
+      // Create poster entries and order items
       const posterPromises = cartItems.map(async (item) => {
-        // First, check if poster exists
         const { data: existingPoster } = await supabase
           .from('posters')
           .select('id')
@@ -205,7 +255,6 @@ const CheckoutPage = () => {
           return existingPoster.id;
         }
 
-        // If poster doesn't exist, create it
         const { data: newPoster, error: posterError } = await supabase
           .from('posters')
           .insert([{
@@ -229,7 +278,6 @@ const CheckoutPage = () => {
 
       const posterIds = await Promise.all(posterPromises);
 
-      // Create order items with the poster IDs
       const orderItems = cartItems.map((item, index) => ({
         order_id: order.id,
         poster_id: posterIds[index],
@@ -266,7 +314,8 @@ const CheckoutPage = () => {
 
   // Calculate totals
   const subtotal = getCartTotal();
-  const bundleDiscount = bundleOffers.reduce((total, offer) => total + (offer.applicable ? offer.savings : 0), 0);
+  const selectedBundle = applicableBundleOffers.find(offer => offer.id === selectedBundleOffer);
+  const bundleDiscount = selectedBundle ? selectedBundle.savings : 0;
   const couponDiscount = subtotal * discount;
   const discountedSubtotal = subtotal - bundleDiscount - couponDiscount;
   const shipping = discountedSubtotal > 1500 ? 0 : 4.99;
@@ -347,11 +396,6 @@ const CheckoutPage = () => {
     );
   }
 
-  // Check if user has complete profile information
-  const hasCompleteProfile = profile && 
-    formData.firstName && formData.lastName && formData.address && 
-    formData.city && formData.state && formData.zipCode;
-
   return (
     <div className="min-h-screen bg-white py-12">
       <div className="container mx-auto px-4">
@@ -365,40 +409,47 @@ const CheckoutPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Checkout Form */}
             <div className="lg:col-span-2">
-              {/* Bundle Offers */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gift className="h-5 w-5" />
-                    Bundle Offers
-                  </CardTitle>
-                  <CardDescription>Special deals available for your order</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {bundleOffers.map((offer) => (
-                    <div 
-                      key={offer.id} 
-                      className={`p-4 rounded-lg border ${offer.applicable ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className={`font-medium ${offer.applicable ? 'text-green-800' : 'text-gray-600'}`}>
-                            {offer.title}
-                          </h4>
-                          <p className={`text-sm ${offer.applicable ? 'text-green-600' : 'text-gray-500'}`}>
-                            {offer.description}
-                          </p>
-                        </div>
-                        {offer.applicable && offer.savings > 0 && (
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
-                            Save ₹{offer.savings.toFixed(2)}
-                          </span>
-                        )}
+              {/* Bundle Offers Selection */}
+              {applicableBundleOffers.length > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Gift className="h-5 w-5" />
+                      Choose Your Bundle Offer
+                    </CardTitle>
+                    <CardDescription>Select one of the available offers for your order</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <RadioGroup value={selectedBundleOffer || ""} onValueChange={setSelectedBundleOffer}>
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                        <RadioGroupItem value="" id="no-bundle" />
+                        <label htmlFor="no-bundle" className="flex-1 cursor-pointer">
+                          <div>
+                            <h4 className="font-medium">No Bundle Offer</h4>
+                            <p className="text-sm text-gray-500">Continue without bundle discount</p>
+                          </div>
+                        </label>
                       </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                      {applicableBundleOffers.map((offer) => (
+                        <div key={offer.id} className="flex items-center space-x-2 p-3 border rounded-lg bg-green-50 border-green-200">
+                          <RadioGroupItem value={offer.id} id={offer.id} />
+                          <label htmlFor={offer.id} className="flex-1 cursor-pointer">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium text-green-800">{offer.title}</h4>
+                                <p className="text-sm text-green-600">{offer.description}</p>
+                              </div>
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
+                                Save ₹{offer.savings.toFixed(2)}
+                              </span>
+                            </div>
+                          </label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Coupon Code */}
               <Card className="mb-8">
@@ -433,151 +484,83 @@ const CheckoutPage = () => {
                       </Button>
                     </div>
                   )}
-                  <div className="mt-3">
-                    <p className="text-xs text-gray-500">
-                      Available codes: SAVE10, WELCOME20, FIRST15, POSTER25
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
 
+              {/* Customer Information */}
               <form onSubmit={handleSubmit}>
-                {hasCompleteProfile ? (
-                  <Card className="mb-8">
-                    <CardHeader>
-                      <CardTitle>Shipping Information</CardTitle>
-                      <CardDescription>Using saved profile information</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
-                        <p><strong>Email:</strong> {formData.email}</p>
-                        <p><strong>Address:</strong> {formData.address}</p>
-                        <p><strong>City:</strong> {formData.city}, {formData.state} {formData.zipCode}</p>
-                        {formData.phone && <p><strong>Phone:</strong> {formData.phone}</p>}
-                      </div>
-                      <div className="mt-4">
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={() => {
-                            // Allow editing by showing the form
-                            setFormData(prev => ({ ...prev }));
-                          }}
-                        >
-                          Edit Address
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="mb-8">
-                    <CardHeader>
-                      <CardTitle>Shipping Information</CardTitle>
-                      <CardDescription>Please provide your shipping details</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input 
-                          id="firstName"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input 
-                          id="lastName"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input 
-                          id="email"
-                          name="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          required
-                          disabled
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label htmlFor="address">Address</Label>
-                        <Input 
-                          id="address"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="city">City</Label>
-                        <Input 
-                          id="city"
-                          name="city"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="state">State/Province</Label>
-                        <Input 
-                          id="state"
-                          name="state"
-                          value={formData.state}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="zipCode">Zip/Postal Code</Label>
-                        <Input 
-                          id="zipCode"
-                          name="zipCode"
-                          value={formData.zipCode}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input 
-                          id="phone"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>Customer Information</CardTitle>
+                    <CardDescription>Please provide your contact details</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input 
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input 
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input 
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        disabled
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input 
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <div className="flex justify-end">
-                  <Button 
-                    type="submit" 
-                    className="bg-posterzone-orange hover:bg-posterzone-orange/90"
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <>Processing...</>
-                    ) : (
-                      <>
-                        Place Order (₹{total.toFixed(2)})
-                      </>
-                    )}
-                  </Button>
-                </div>
+                {/* Payment Section */}
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>Payment</CardTitle>
+                    <CardDescription>Secure payment powered by Gokwik</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <p className="text-gray-600 mb-4">Click below to proceed with secure Gokwik payment</p>
+                      <Button 
+                        type="button"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+                        onClick={handleGokwikPayment}
+                        disabled={isProcessing}
+                      >
+                        Pay with Gokwik ₹{total.toFixed(2)}
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2">Gokwik API integration required</p>
+                    </div>
+                  </CardContent>
+                </Card>
               </form>
             </div>
             
