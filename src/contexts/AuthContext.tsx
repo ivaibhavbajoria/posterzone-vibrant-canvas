@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,10 +40,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // Admin credentials - updated email
-  const ADMIN_EMAIL = 'vaibhavbajoria030@gmail.com';
-  const ADMIN_PASSWORD = 'test001';
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -90,7 +87,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Error fetching user profile:', error);
-        // If profile doesn't exist, create one
         if (error.code === 'PGRST116') {
           console.log('Profile not found, will be created by trigger on next login');
         }
@@ -105,75 +101,110 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string): boolean => {
+    // Minimum 8 characters, at least one letter and one number
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+    return passwordRegex.test(password);
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
-      // Check if trying to access admin panel with wrong credentials
-      if (window.location.pathname === '/admin' || window.location.hash === '#/admin') {
-        if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-          toast.error("Invalid admin credentials. Only authorized personnel can access the admin panel.");
-          throw new Error("Invalid admin credentials");
-        }
+      // Input validation
+      if (!validateEmail(email)) {
+        toast.error("Please enter a valid email address");
+        throw new Error("Invalid email format");
+      }
+
+      if (!password || password.length < 6) {
+        toast.error("Password must be at least 6 characters long");
+        throw new Error("Invalid password");
       }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
-        toast.error(`Login failed: ${error.message}`);
+        // Enhanced error handling
+        let errorMessage = "Login failed";
+        if (error.message.includes("Invalid login credentials")) {
+          errorMessage = "Invalid email or password";
+        } else if (error.message.includes("Email not confirmed")) {
+          errorMessage = "Please verify your email before signing in";
+        } else if (error.message.includes("Too many requests")) {
+          errorMessage = "Too many login attempts. Please try again later";
+        }
+        
+        toast.error(errorMessage);
+        
+        // Log security event for failed login
+        await securityService.logLoginAttempt(email, false, { 
+          error: error.message,
+          riskLevel: 'medium'
+        });
+        
         throw error;
       }
 
-      // Log security event
+      // Log successful login
       await securityService.logLoginAttempt(email, true);
-
-      // For admin login, ensure user gets admin privileges
-      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        // Update profile to ensure admin status
-        setTimeout(async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from('profiles')
-              .upsert({ 
-                id: user.id, 
-                is_admin: true,
-                full_name: user.user_metadata?.full_name || 'Admin',
-                updated_at: new Date().toISOString()
-              });
-          }
-        }, 100);
-      }
-
       toast.success("Login successful! Welcome back!");
     } catch (error) {
       console.error('Error signing in:', error);
-      
-      // Log failed login attempt
-      await securityService.logLoginAttempt(email, false, { error: error.message });
-      
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
+      // Input validation
+      if (!validateEmail(email)) {
+        toast.error("Please enter a valid email address");
+        throw new Error("Invalid email format");
+      }
+
+      if (!validatePassword(password)) {
+        toast.error("Password must be at least 8 characters with letters and numbers");
+        throw new Error("Invalid password format");
+      }
+
+      if (!fullName || fullName.trim().length < 2) {
+        toast.error("Please enter a valid full name");
+        throw new Error("Invalid full name");
+      }
+
+      // Sanitize inputs
+      const sanitizedEmail = email.trim().toLowerCase();
+      const sanitizedFullName = fullName.trim().replace(/[<>]/g, '');
+
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({
-        email,
+        email: sanitizedEmail,
         password,
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            full_name: fullName,
+            full_name: sanitizedFullName,
           },
         },
       });
 
       if (error) {
-        toast.error(`Signup failed: ${error.message}`);
+        let errorMessage = "Signup failed";
+        if (error.message.includes("User already registered")) {
+          errorMessage = "An account with this email already exists";
+        } else if (error.message.includes("Password should be")) {
+          errorMessage = "Password doesn't meet security requirements";
+        }
+        
+        toast.error(errorMessage);
         throw error;
       }
 
@@ -181,7 +212,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await securityService.logSecurityEvent({
         action: 'USER_REGISTRATION',
         resource: 'auth',
-        details: { email, fullName }
+        details: { email: sanitizedEmail, fullName: sanitizedFullName }
       });
 
       toast.success("Signup successful! Please check your email to verify your account.");
@@ -193,7 +224,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      if (!validateEmail(email)) {
+        toast.error("Please enter a valid email address");
+        throw new Error("Invalid email format");
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
@@ -201,6 +237,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         toast.error(`Password reset failed: ${error.message}`);
         throw error;
       }
+
+      // Log password reset attempt
+      await securityService.logSecurityEvent({
+        action: 'PASSWORD_RESET_REQUESTED',
+        resource: 'auth',
+        details: { email: email.trim().toLowerCase() }
+      });
 
       toast.success("Password reset email sent! Check your inbox.");
     } catch (error) {
@@ -211,6 +254,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      await securityService.logSecurityEvent({
+        action: 'USER_LOGOUT',
+        resource: 'auth',
+        details: { userId: user?.id }
+      });
+
       await supabase.auth.signOut();
       toast.success("You have been successfully logged out.");
     } catch (error) {

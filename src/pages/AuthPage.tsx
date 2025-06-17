@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import OTPVerification from "@/components/OTPVerification";
+import { securityService } from "@/services/securityService";
+import { Eye, EyeOff, Shield } from "lucide-react";
 
 const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -21,8 +22,10 @@ const AuthPage: React.FC = () => {
   const [showOTP, setShowOTP] = useState(false);
   const [showPhoneOTP, setShowPhoneOTP] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingPhone, setPendingPhone] = useState("");
+  const [csrfToken] = useState(() => securityService.generateCSRFToken());
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
@@ -34,6 +37,13 @@ const AuthPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // CSRF protection
+    if (!securityService.validateCSRFToken(csrfToken)) {
+      toast.error("Security validation failed. Please refresh the page.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -41,7 +51,6 @@ const AuthPage: React.FC = () => {
         await signIn(email, password);
       } else {
         await signUp(email, password, fullName);
-        // For signup, show OTP verification
         setPendingEmail(email);
         setShowOTP(true);
       }
@@ -64,6 +73,17 @@ const AuthPage: React.FC = () => {
       
       if (error) {
         toast.error(`Google sign-in failed: ${error.message}`);
+        await securityService.logSecurityEvent({
+          action: 'OAUTH_LOGIN_FAILED',
+          resource: 'auth',
+          details: { provider: 'google', error: error.message }
+        });
+      } else {
+        await securityService.logSecurityEvent({
+          action: 'OAUTH_LOGIN_SUCCESS',
+          resource: 'auth',
+          details: { provider: 'google' }
+        });
       }
     } catch (error) {
       console.error("Google sign-in error:", error);
@@ -78,6 +98,13 @@ const AuthPage: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Validate phone number format
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(phone)) {
+        toast.error("Please enter a valid phone number with country code");
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
         phone: phone,
         options: {
@@ -87,10 +114,20 @@ const AuthPage: React.FC = () => {
       
       if (error) {
         toast.error(`Phone sign-in failed: ${error.message}`);
+        await securityService.logSecurityEvent({
+          action: 'PHONE_OTP_FAILED',
+          resource: 'auth',
+          details: { phone: phone.replace(/\d(?=\d{4})/g, '*'), error: error.message }
+        });
       } else {
         setPendingPhone(phone);
         setShowPhoneOTP(true);
         toast.success("OTP sent to your phone number");
+        await securityService.logSecurityEvent({
+          action: 'PHONE_OTP_SENT',
+          resource: 'auth',
+          details: { phone: phone.replace(/\d(?=\d{4})/g, '*') }
+        });
       }
     } catch (error) {
       console.error("Phone sign-in error:", error);
@@ -105,7 +142,13 @@ const AuthPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+      if (!emailRegex.test(email)) {
+        toast.error("Please enter a valid email address");
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}/reset-password`
       });
       
@@ -153,7 +196,6 @@ const AuthPage: React.FC = () => {
   };
 
   const handleResendOTP = async () => {
-    // Simulate resending OTP
     console.log("Resending OTP to:", pendingEmail);
   };
 
@@ -198,7 +240,7 @@ const AuthPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <p className="text-center text-gray-600 mb-4">
-              Enter the 6-digit code sent to {pendingPhone}
+              Enter the 6-digit code sent to {pendingPhone.replace(/\d(?=\d{4})/g, '*')}
             </p>
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -210,6 +252,7 @@ const AuthPage: React.FC = () => {
                   name="otp"
                   placeholder="Enter OTP"
                   maxLength={6}
+                  pattern="[0-9]{6}"
                   className="text-center text-lg"
                   required
                 />
@@ -256,7 +299,7 @@ const AuthPage: React.FC = () => {
                   type="email"
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(securityService.sanitizeInput(e.target.value))}
                   required
                 />
               </div>
@@ -282,7 +325,8 @@ const AuthPage: React.FC = () => {
     <div className="flex items-center justify-center min-h-[80vh] px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">
+          <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
+            <Shield className="h-6 w-6" />
             {activeTab === "login" ? "Sign In" : "Create an Account"}
           </CardTitle>
         </CardHeader>
@@ -294,6 +338,8 @@ const AuthPage: React.FC = () => {
           </TabsList>
 
           <CardContent className="pt-6">
+            <input type="hidden" name="csrf_token" value={csrfToken} />
+            
             <TabsContent value="login">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -303,20 +349,37 @@ const AuthPage: React.FC = () => {
                     type="email"
                     placeholder="Enter your email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(securityService.sanitizeInput(e.target.value))}
+                    autoComplete="email"
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Signing In..." : "Sign In"}
@@ -349,7 +412,8 @@ const AuthPage: React.FC = () => {
                     id="fullName"
                     placeholder="Enter your full name"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => setFullName(securityService.sanitizeInput(e.target.value))}
+                    autoComplete="name"
                     required
                   />
                 </div>
@@ -360,20 +424,41 @@ const AuthPage: React.FC = () => {
                     type="email"
                     placeholder="Enter your email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(securityService.sanitizeInput(e.target.value))}
+                    autoComplete="email"
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password (min 8 chars)"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Password must be at least 8 characters with letters and numbers
+                  </p>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating Account..." : "Create Account"}
@@ -399,7 +484,9 @@ const AuthPage: React.FC = () => {
                     type="tel"
                     placeholder="Enter your phone number (with country code)"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(securityService.sanitizeInput(e.target.value))}
+                    pattern="^\+?[1-9]\d{1,14}$"
+                    autoComplete="tel"
                     required
                   />
                   <p className="text-xs text-gray-500">

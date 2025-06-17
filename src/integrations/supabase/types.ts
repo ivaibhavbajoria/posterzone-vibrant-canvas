@@ -42,6 +42,41 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sessions: {
+        Row: {
+          admin_id: string | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          session_token: string
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          last_used_at?: string | null
+          session_token: string
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_import_logs: {
         Row: {
           created_at: string | null
@@ -400,7 +435,10 @@ export type Database = {
           details: Json | null
           id: string
           ip_address: unknown | null
+          metadata: Json | null
           resource: string | null
+          risk_level: string | null
+          session_id: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -410,7 +448,10 @@ export type Database = {
           details?: Json | null
           id?: string
           ip_address?: unknown | null
+          metadata?: Json | null
           resource?: string | null
+          risk_level?: string | null
+          session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -420,7 +461,10 @@ export type Database = {
           details?: Json | null
           id?: string
           ip_address?: unknown | null
+          metadata?: Json | null
           resource?: string | null
+          risk_level?: string | null
+          session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -482,12 +526,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_admin_role: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       check_admin_status: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
       hash_password: {
         Args: { password: string }
+        Returns: string
+      }
+      is_profile_owner: {
+        Args: { profile_id: string }
+        Returns: boolean
+      }
+      log_enhanced_security_event: {
+        Args: {
+          p_action: string
+          p_resource?: string
+          p_details?: Json
+          p_ip_address?: unknown
+          p_user_agent?: string
+          p_session_id?: string
+          p_risk_level?: string
+        }
         Returns: string
       }
       log_security_event: {
@@ -499,6 +563,14 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      validate_email: {
+        Args: { email: string }
+        Returns: boolean
+      }
+      validate_phone: {
+        Args: { phone: string }
+        Returns: boolean
       }
       verify_admin_credentials: {
         Args: { email: string; password: string }
