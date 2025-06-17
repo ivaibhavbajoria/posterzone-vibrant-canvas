@@ -1,12 +1,12 @@
 
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth0Context } from '@/contexts/Auth0Context';
 import Header from './Header';
 import Footer from './Footer';
 
 const Layout = () => {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth0Context();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -15,12 +15,12 @@ const Layout = () => {
     const publicPaths = ['/', '/collections', '/trending', '/best-sellers', '/about', '/contact', '/auth'];
     const isPublicPath = publicPaths.includes(location.pathname) || location.pathname.startsWith('/poster/');
     
-    if (!loading && !user && !isPublicPath) {
+    if (!isLoading && !isAuthenticated && !isPublicPath) {
       navigate('/auth');
     }
-  }, [user, loading, navigate, location]);
+  }, [isAuthenticated, isLoading, navigate, location]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

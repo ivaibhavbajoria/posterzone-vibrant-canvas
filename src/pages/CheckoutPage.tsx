@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, ShoppingCart, Tag, Gift } from "lucide-react";
@@ -73,6 +72,10 @@ const CheckoutPage = () => {
     lastName: "",
     email: "",
     phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
   });
 
   // Fetch admin-created coupons
@@ -255,7 +258,7 @@ const CheckoutPage = () => {
     });
   };
 
-  const handleProceedToPay = () => {
+  const handleProceedToShiprocket = async () => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -266,20 +269,99 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (!formData.firstName || !formData.lastName || !formData.phone) {
+    if (!formData.firstName || !formData.lastName || !formData.phone || !formData.address || !formData.city || !formData.state || !formData.pincode) {
       toast({
         title: "Information required",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields including shipping address.",
         variant: "destructive",
       });
       return;
     }
 
-    // For now, just show a message that Gokwik integration will be added
-    toast({
-      title: "Redirecting to Payment",
-      description: "Gokwik payment integration will be implemented here.",
-    });
+    setIsProcessing(true);
+
+    try {
+      // Create order data for Shiprocket
+      const orderData = {
+        order_id: `ORD-${Date.now()}`,
+        order_date: new Date().toISOString(),
+        pickup_location: "Primary",
+        billing_customer_name: `${formData.firstName} ${formData.lastName}`,
+        billing_last_name: formData.lastName,
+        billing_address: formData.address,
+        billing_city: formData.city,
+        billing_pincode: formData.pincode,
+        billing_state: formData.state,
+        billing_country: "India",
+        billing_email: formData.email,
+        billing_phone: formData.phone,
+        shipping_is_billing: true,
+        order_items: cartItems.map(item => ({
+          name: item.title,
+          sku: item.id,
+          units: item.quantity,
+          selling_price: item.price,
+          discount: 0,
+          tax: 0,
+          hsn: 441122
+        })),
+        payment_method: "Prepaid",
+        sub_total: subtotal,
+        length: 10,
+        breadth: 15,
+        height: 5,
+        weight: 0.5
+      };
+
+      // Store order in our database first
+      const { data: orderRecord, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          items: cartItems,
+          total: total,
+          status: 'pending',
+          shipping_address: {
+            name: `${formData.firstName} ${formData.lastName}`,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pincode: formData.pincode,
+            phone: formData.phone
+          }
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        throw new Error('Failed to create order');
+      }
+
+      // For now, show success message and redirect to Shiprocket integration
+      toast({
+        title: "Redirecting to Shiprocket",
+        description: "You will be redirected to complete your payment with Shiprocket.",
+      });
+
+      // In a real implementation, you would integrate with Shiprocket API here
+      // For now, we'll simulate the redirect
+      console.log('Order data for Shiprocket:', orderData);
+      
+      // Clear cart after successful order creation
+      clearCart();
+      setCheckoutComplete(true);
+      setOrderNumber(orderData.order_id);
+
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: "Checkout failed",
+        description: "There was an error processing your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Calculate totals
@@ -311,6 +393,31 @@ const CheckoutPage = () => {
             <Link to="/collections">
               <Button className="bg-posterzone-orange hover:bg-posterzone-orange/90">
                 Browse Collections
+              </Button>
+            </Link>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  if (checkoutComplete) {
+    return (
+      <div className="min-h-screen bg-white py-12">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center py-16"
+          >
+            <Check className="w-20 h-20 mx-auto text-green-500 mb-6" />
+            <h1 className="text-3xl font-bold text-posterzone-charcoal mb-4">Order Placed Successfully!</h1>
+            <p className="text-gray-600 mb-4">Your order number is: <strong>{orderNumber}</strong></p>
+            <p className="text-gray-600 mb-8">You will receive a confirmation email shortly.</p>
+            <Link to="/collections">
+              <Button className="bg-posterzone-orange hover:bg-posterzone-orange/90">
+                Continue Shopping
               </Button>
             </Link>
           </motion.div>
@@ -464,24 +571,55 @@ const CheckoutPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Payment Section */}
+              {/* Shipping Address */}
               <Card className="mb-8">
                 <CardHeader>
-                  <CardTitle>Payment</CardTitle>
-                  <CardDescription>Complete your order</CardDescription>
+                  <CardTitle>Shipping Address</CardTitle>
+                  <CardDescription>Where should we deliver your order?</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <p className="text-gray-600 mb-4">Ready to complete your order?</p>
-                    <Button 
-                      type="button"
-                      className="bg-posterzone-orange hover:bg-posterzone-orange/90 text-white px-8 py-3 text-lg"
-                      onClick={handleProceedToPay}
-                      disabled={isProcessing}
-                    >
-                      Proceed to Pay {formatPrice(total)}
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">Secure payment with Gokwik (Integration coming soon)</p>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="address">Street Address</Label>
+                    <Input 
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      placeholder="Enter your complete address"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input 
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input 
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pincode">Pincode</Label>
+                    <Input 
+                      id="pincode"
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={handleInputChange}
+                      pattern="[0-9]{6}"
+                      placeholder="6-digit pincode"
+                      required
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -489,7 +627,7 @@ const CheckoutPage = () => {
             
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <Card className="sticky top-8">
+              <Card className="sticky top-8 mb-6">
                 <CardHeader>
                   <CardTitle>Order Summary</CardTitle>
                 </CardHeader>
@@ -559,6 +697,23 @@ const CheckoutPage = () => {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Proceed to Pay Button */}
+              <Card>
+                <CardContent className="pt-6">
+                  <Button 
+                    type="button"
+                    className="w-full bg-posterzone-orange hover:bg-posterzone-orange/90 text-white py-3 text-lg"
+                    onClick={handleProceedToShiprocket}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? "Processing..." : `Proceed to Pay ${formatPrice(total)}`}
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Secure payment & shipping with Shiprocket
+                  </p>
                 </CardContent>
               </Card>
             </div>
