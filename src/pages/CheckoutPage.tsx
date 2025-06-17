@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, ShoppingCart, Tag, Gift } from "lucide-react";
@@ -15,22 +16,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth0Context } from "@/contexts/Auth0Context";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatPrice } from "@/utils/currency";
-
-interface UserProfile {
-  id: string;
-  full_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  zip_code: string | null;
-  phone: string | null;
-  is_admin: boolean;
-}
 
 interface BundleOffer {
   id: string;
@@ -55,12 +43,11 @@ interface Coupon {
 const CheckoutPage = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const { user, isAuthenticated } = useAuth0Context();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -127,27 +114,21 @@ const CheckoutPage = () => {
   const applicableBundleOffers = bundleOffers.filter(offer => offer.applicable && offer.savings > 0);
 
   useEffect(() => {
-    if (profile) {
-      // Pre-fill form with profile data if available
-      const nameParts = profile.full_name?.split(' ') || [];
+    if (user) {
+      // Pre-fill form with user data if available
+      const nameParts = user.name?.split(' ') || [];
       setFormData({
         firstName: nameParts[0] || "",
         lastName: nameParts.slice(1).join(' ') || "",
-        email: user?.email || "",
-        phone: profile.phone || "",
-      });
-      setIsLoadingProfile(false);
-    } else if (user) {
-      // If no profile but user exists, set basic info
-      setFormData({
-        firstName: user.user_metadata?.full_name?.split(' ')[0] || "",
-        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || "",
         email: user.email || "",
         phone: "",
+        address: "",
+        city: "",
+        state: "",
+        pincode: "",
       });
-      setIsLoadingProfile(false);
     }
-  }, [profile, user]);
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -259,7 +240,7 @@ const CheckoutPage = () => {
   };
 
   const handleProceedToShiprocket = async () => {
-    if (!user) {
+    if (!isAuthenticated || !user) {
       toast({
         title: "Authentication required",
         description: "Please log in to proceed with payment.",
@@ -317,7 +298,7 @@ const CheckoutPage = () => {
       const { data: orderRecord, error: orderError } = await supabase
         .from('orders')
         .insert({
-          user_id: user.id,
+          user_id: user.sub,
           items: cartItems,
           total: total,
           status: 'pending',
