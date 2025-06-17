@@ -13,22 +13,9 @@ interface Auth0ContextType {
 const Auth0Context = createContext<Auth0ContextType | undefined>(undefined);
 
 export const Auth0ProviderWrapper = ({ children }: { children: React.ReactNode }) => {
-  const domain = import.meta.env.VITE_AUTH0_DOMAIN;
-  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+  const domain = "dev-82smjwk3l3ktx7wa.us.auth0.com";
+  const clientId = "jUvvGMyb9tAxZzG2NqQHjrXP5jOmKSny";
   const redirectUri = window.location.origin;
-
-  if (!domain || !clientId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-4">Auth0 Configuration Required</h2>
-          <p className="text-gray-600">
-            Please set VITE_AUTH0_DOMAIN and VITE_AUTH0_CLIENT_ID environment variables.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <Auth0Provider
