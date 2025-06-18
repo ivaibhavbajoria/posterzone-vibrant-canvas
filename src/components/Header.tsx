@@ -102,33 +102,46 @@ const Header = () => {
               <DropdownMenuContent align="end">
                 {isAuthenticated && user ? (
                   <>
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col">
+                        <span>{user.name || user.email}</span>
+                        <span className="text-xs font-normal text-gray-500">{user.email}</span>
+                      </div>
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      My Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/order-history')}>
+                      <ShoppingCart className="mr-2 h-4 w-4" />
                       Order History
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/favorites')}>
+                      <Heart className="mr-2 h-4 w-4" />
+                      My Favorites
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Logout
+                      Sign Out
                     </DropdownMenuItem>
                   </>
                 ) : (
                   <DropdownMenuItem onClick={() => navigate('/auth')}>
+                    <User className="mr-2 h-4 w-4" />
                     Login / Sign Up
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* Favorites Link */}
-            <Link to="/favorites" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Favorites">
-              <Heart size={20} className="text-posterzone-charcoal" />
-            </Link>
+            {/* Favorites Link - only show when authenticated */}
+            {isAuthenticated && (
+              <Link to="/favorites" className="p-2 hover:bg-posterzone-lightgray rounded-full" aria-label="Favorites">
+                <Heart size={20} className="text-posterzone-charcoal" />
+              </Link>
+            )}
 
             {/* Search Dialog */}
             <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
@@ -296,20 +309,24 @@ const Header = () => {
               >
                 Contact
               </Link>
-              <Link
-                to="/favorites"
-                className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Favorites
-              </Link>
-              <Link
-                to="/cart"
-                className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Cart
-              </Link>
+              {isAuthenticated && (
+                <>
+                  <Link
+                    to="/favorites"
+                    className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Favorites
+                  </Link>
+                  <Link
+                    to="/cart"
+                    className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Cart
+                  </Link>
+                </>
+              )}
               {isAuthenticated && user ? (
                 <>
                   <Link
@@ -317,7 +334,14 @@ const Header = () => {
                     className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Profile
+                    My Profile
+                  </Link>
+                  <Link
+                    to="/order-history"
+                    className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Order History
                   </Link>
                   <button
                     onClick={() => {
@@ -326,7 +350,7 @@ const Header = () => {
                     }}
                     className="text-posterzone-charcoal hover:text-posterzone-orange px-2 py-1 transition-colors text-left"
                   >
-                    Logout
+                    Sign Out
                   </button>
                 </>
               ) : (
