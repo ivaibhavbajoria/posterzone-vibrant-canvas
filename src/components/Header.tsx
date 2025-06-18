@@ -21,12 +21,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth0Context } from '@/contexts/Auth0Context';
 
 const Header = () => {
   const navigate = useNavigate();
   const { cartItems, getCartCount, getCartTotal, removeFromCart } = useCart();
-  const { user, signOut } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth0Context();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,7 +45,7 @@ const Header = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      logout();
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -100,7 +100,7 @@ const Header = () => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {user ? (
+                {isAuthenticated && user ? (
                   <>
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -310,7 +310,7 @@ const Header = () => {
               >
                 Cart
               </Link>
-              {user ? (
+              {isAuthenticated && user ? (
                 <>
                   <Link
                     to="/profile"
