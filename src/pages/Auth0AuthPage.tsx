@@ -11,17 +11,20 @@ const Auth0AuthPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('Auth0AuthPage - Auth state:', { user, isAuthenticated, isLoading });
+    
     if (isAuthenticated && user) {
-      navigate("/");
+      console.log('User is authenticated, should redirect');
+      // Don't redirect here - let Layout handle it
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-posterzone-orange mx-auto mb-4"></div>
-          <p>Loading...</p>
+          <p>Authenticating...</p>
         </div>
       </div>
     );
@@ -54,17 +57,17 @@ const Auth0AuthPage: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Button 
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/profile')}
                 className="w-full bg-posterzone-orange hover:bg-posterzone-orange/90"
               >
-                Go to Dashboard
+                Go to Profile
               </Button>
               <Button 
-                onClick={logout}
+                onClick={() => navigate('/')}
                 variant="outline"
                 className="w-full"
               >
-                Sign Out
+                Go to Home
               </Button>
             </div>
           </CardContent>
@@ -89,7 +92,10 @@ const Auth0AuthPage: React.FC = () => {
           
           <div className="space-y-3">
             <Button 
-              onClick={loginWithRedirect}
+              onClick={() => {
+                console.log('Starting Auth0 login');
+                loginWithRedirect();
+              }}
               className="w-full bg-posterzone-orange hover:bg-posterzone-orange/90"
             >
               Sign In with Auth0

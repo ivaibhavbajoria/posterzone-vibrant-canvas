@@ -28,7 +28,7 @@ const UserProfilePage = () => {
       setFormData({
         full_name: user.name || '',
         email: user.email || '',
-        phone: user.phone_number || ''
+        phone: user.phone_number || user.user_metadata?.phone || ''
       });
     }
   }, [user]);
