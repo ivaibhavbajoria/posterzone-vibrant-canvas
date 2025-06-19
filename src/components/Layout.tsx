@@ -11,6 +11,12 @@ const Layout = () => {
   const location = useLocation();
 
   useEffect(() => {
+    // If user is authenticated and on auth page, redirect to home
+    if (isAuthenticated && location.pathname === '/auth') {
+      navigate('/');
+      return;
+    }
+
     // If not loading and no user, redirect to auth page (except for public pages)
     const publicPaths = ['/', '/collections', '/trending', '/best-sellers', '/about', '/contact', '/auth'];
     const isPublicPath = publicPaths.includes(location.pathname) || location.pathname.startsWith('/poster/');
