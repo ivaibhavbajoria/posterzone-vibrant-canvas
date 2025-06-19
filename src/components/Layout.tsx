@@ -11,20 +11,28 @@ const Layout = () => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('Layout - Auth state:', { isAuthenticated, isLoading, pathname: location.pathname });
+    
+    // Don't do any redirects while loading
+    if (isLoading) return;
+
     // If user is authenticated and on auth page, redirect to home
     if (isAuthenticated && location.pathname === '/auth') {
+      console.log('Authenticated user on auth page, redirecting to home');
       navigate('/');
       return;
     }
 
-    // If not loading and no user, redirect to auth page (except for public pages)
-    const publicPaths = ['/', '/collections', '/trending', '/best-sellers', '/about', '/contact', '/auth'];
-    const isPublicPath = publicPaths.includes(location.pathname) || location.pathname.startsWith('/poster/');
+    // Define protected routes that require authentication
+    const protectedPaths = ['/profile', '/order-history', '/favorites', '/cart', '/checkout'];
+    const isProtectedPath = protectedPaths.includes(location.pathname);
     
-    if (!isLoading && !isAuthenticated && !isPublicPath) {
+    // If user is not authenticated and trying to access protected route, redirect to auth
+    if (!isAuthenticated && isProtectedPath) {
+      console.log('Unauthenticated user accessing protected route, redirecting to auth');
       navigate('/auth');
     }
-  }, [isAuthenticated, isLoading, navigate, location]);
+  }, [isAuthenticated, isLoading, navigate, location.pathname]);
 
   if (isLoading) {
     return (

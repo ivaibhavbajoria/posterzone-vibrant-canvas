@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth0Context } from '@/contexts/Auth0Context';
 import { toast } from 'sonner';
 import { User, Settings, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const UserProfilePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth0Context();
+  const navigate = useNavigate();
   const [isUpdating, setIsUpdating] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -19,6 +21,8 @@ const UserProfilePage = () => {
   });
 
   useEffect(() => {
+    console.log('UserProfilePage - Auth state:', { user, isAuthenticated, isLoading });
+    
     if (user) {
       console.log('Auth0 user loaded:', user);
       setFormData({
@@ -71,7 +75,7 @@ const UserProfilePage = () => {
         <div className="text-center">
           <h1 className="text-3xl font-bold mb-4">My Profile</h1>
           <p className="text-gray-600">Please log in to view your profile.</p>
-          <Button onClick={() => window.location.href = '/auth'} className="mt-4">
+          <Button onClick={() => navigate('/auth')} className="mt-4">
             Go to Login
           </Button>
         </div>
@@ -167,7 +171,7 @@ const UserProfilePage = () => {
                 <p className="text-gray-600 mb-4">
                   View your complete order history and track current orders.
                 </p>
-                <Button onClick={() => window.location.href = '/order-history'}>
+                <Button onClick={() => navigate('/order-history')}>
                   View Order History
                 </Button>
               </div>
