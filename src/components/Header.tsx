@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, Heart, User, LogOut } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, Heart, User, LogOut, LogIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu,
@@ -26,7 +26,7 @@ import { useAuth0Context } from '@/contexts/Auth0Context';
 const Header = () => {
   const navigate = useNavigate();
   const { cartItems, getCartCount, getCartTotal, removeFromCart } = useCart();
-  const { user, isAuthenticated, logout } = useAuth0Context();
+  const { user, isAuthenticated, logout, isLoading } = useAuth0Context();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +50,18 @@ const Header = () => {
     } catch (error) {
       console.error('Error signing out:', error);
     }
+  };
+
+  const handleLoginClick = () => {
+    if (isAuthenticated) {
+      navigate('/profile');
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleViewProfile = () => {
+    navigate('/profile');
   };
 
   const cartCount = getCartCount();
@@ -92,6 +104,35 @@ const Header = () => {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            {/* Login/Profile Buttons */}
+            <div className="flex items-center space-x-2">
+              {!isLoading && (
+                <>
+                  {!isAuthenticated ? (
+                    <Button
+                      onClick={handleLoginClick}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Login / Sign Up
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleViewProfile}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <User className="h-4 w-4" />
+                      View Profile
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* User Profile/Auth Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -129,7 +170,7 @@ const Header = () => {
                   </>
                 ) : (
                   <DropdownMenuItem onClick={() => navigate('/auth')}>
-                    <User className="mr-2 h-4 w-4" />
+                    <LogIn className="mr-2 h-4 w-4" />
                     Login / Sign Up
                   </DropdownMenuItem>
                 )}
